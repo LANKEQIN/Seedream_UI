@@ -1,42 +1,27 @@
-import { Sun, Moon, Monitor, Key, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Key, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/stores/settingsStore'
-import type { Theme } from '@/stores/settingsStore'
-import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
 
-interface HeaderProps {
-  title?: string
-}
-
-const themeIcons: Record<Theme, React.ReactNode> = {
-  light: <Sun className="h-4 w-4" />,
-  dark: <Moon className="h-4 w-4" />,
-  system: <Monitor className="h-4 w-4" />,
-}
-
-const themeLabels: Record<Theme, string> = {
-  light: '浅色模式',
-  dark: '深色模式',
-  system: '跟随系统',
-}
-
-export function Header({ title }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme()
+export function Header() {
   const hasApiKey = useSettingsStore((state) => state.hasApiKey())
 
   return (
-    <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="flex items-center justify-between px-6 py-4">
-        <h2 className="text-lg font-semibold">{title || 'Seedream Studio'}</h2>
+    <header className="bg-white border-b">
+      <div className="flex items-center justify-between px-6 py-3">
+        <div className="flex items-center gap-4">
+          <h2 className="text-sm font-medium text-slate-500">
+            火山方舟图片生成平台
+          </h2>
+        </div>
         
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm',
+              'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs',
               hasApiKey
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                ? 'bg-green-50 text-green-700'
+                : 'bg-amber-50 text-amber-700'
             )}
           >
             <Key className="h-3.5 w-3.5" />
@@ -52,15 +37,12 @@ export function Header({ title }: HeaderProps) {
               </>
             )}
           </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            title={themeLabels[theme]}
-            className="h-9 w-9"
-          >
-            {themeIcons[theme]}
+          
+          <Button variant="secondary" size="sm" className="text-xs h-8">
+            体验文档
+          </Button>
+          <Button size="sm" className="text-xs h-8 bg-indigo-600 hover:bg-indigo-700">
+            API 接入
           </Button>
         </div>
       </div>
