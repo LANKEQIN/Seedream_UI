@@ -1,12 +1,12 @@
 /**
  * 功能卡片区域
- * 展示图片生成和视频生成功能卡片
+ * 展示图片生成功能卡片
  */
 
-import { ImageIcon, Video, Sparkles } from "lucide-react"
+import { ImageIcon, Sparkles } from "lucide-react"
 
 interface FeatureCard {
-  id: "image" | "video"
+  id: "image"
   title: string
   subtitle: string
   desc: string
@@ -25,20 +25,11 @@ const FEATURES: FeatureCard[] = [
     gradient: "from-blue-500 to-cyan-500",
     bgColor: "bg-blue-50 dark:bg-blue-950/30",
   },
-  {
-    id: "video",
-    title: "视频生成",
-    subtitle: "Seedance 2.0",
-    desc: "智能视频创作",
-    icon: Video,
-    gradient: "from-purple-500 to-pink-500",
-    bgColor: "bg-purple-50 dark:bg-purple-950/30",
-  },
 ]
 
 interface FeatureCardsProps {
-  activeFeature: "image" | "video"
-  onFeatureSelect: (feature: "image" | "video") => void
+  activeFeature: "image"
+  onFeatureSelect: (feature: "image") => void
 }
 
 export function FeatureCards({ activeFeature, onFeatureSelect }: FeatureCardsProps) {

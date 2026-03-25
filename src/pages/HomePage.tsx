@@ -1,6 +1,6 @@
 /**
  * 首页 - 仿制即梦AI设计风格
- * 功能：Agent模式、图片生成、视频生成
+ * 功能：图片生成
  * 参考文档: https://www.volcengine.com/docs/82379/1824121
  */
 
@@ -19,7 +19,6 @@ import {
   EyeOff,
   Check,
 } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -29,14 +28,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { FeatureSelector, type FeatureType, type ModelId as SelectorModelId } from "@/components/generation/FeatureSelector"
+import { FeatureSelector, type FeatureType } from "@/components/generation/FeatureSelector"
 import { useSettingsStore, hasValidApiKey } from "@/stores/settings"
 import { ReferenceImageUpload } from "@/components/generation/ReferenceImageUpload"
 import { FeatureCards } from "@/components/generation/FeatureCards"
-import { ModelSelector } from "@/components/generation/ModelSelector"
-import { ImageSizeSelector } from "@/components/generation/ImageSizeSelector"
-import { GenerationCountSelector } from "@/components/generation/GenerationCountSelector"
-import { FormatSelector } from "@/components/generation/FormatSelector"
+import { GenerationParamsPopover } from "@/components/generation/GenerationParamsPopover"
 import { ImageResult } from "@/components/image/ImageResult"
 import {
   generateImage,
@@ -49,6 +45,7 @@ import type {
   GenerationTask,
   ImageFormat,
   ImageSizeConfig,
+  ModelId,
 } from "@/types"
 
 // 提示词示例
@@ -64,7 +61,7 @@ export function HomePage() {
   const [featureMode, setFeatureMode] = useState<FeatureType>("image")
 
   // 当前选择的模型
-  const [selectedModel, setSelectedModel] = useState<SelectorModelId>("doubao-seedream-5-0-lite-260128")
+  const [selectedModel, setSelectedModel] = useState<ModelId>("doubao-seedream-5-0-lite-260128")
 
   // 参考图片
   const [referenceImage, setReferenceImage] = useState<string | null>(null)
@@ -94,7 +91,7 @@ export function HomePage() {
   }, [])
 
   // 处理模型切换
-  const handleModelChange = useCallback((model: SelectorModelId) => {
+  const handleModelChange = useCallback((model: ModelId) => {
     setSelectedModel(model)
     // 同步更新生成参数中的模型，并根据新模型支持的格式调整输出格式
     setParams((prev) => {
@@ -328,6 +325,18 @@ export function HomePage() {
                     onModelChange={handleModelChange}
                   />
 
+                  {/* 生成参数选择弹窗 */}
+                  <GenerationParamsPopover
+                    sizeConfig={params.sizeConfig}
+                    onSizeConfigChange={handleSizeConfigChange}
+                    generationCount={params.generationCount}
+                    onGenerationCountChange={handleGenerationCountChange}
+                    outputFormat={params.outputFormat}
+                    onOutputFormatChange={handleFormatChange}
+                    modelId={params.model}
+                    disabled={isGenerating}
+                  />
+
                   {/* 灵感搜索 */}
                   <Badge
                     variant="secondary"
@@ -501,7 +510,7 @@ export function HomePage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-indigo-500" />
-              创作设置
+              设置
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
@@ -591,33 +600,6 @@ export function HomePage() {
               </div>
             </div>
 
-            <Separator />
-
-            <ModelSelector
-              value={params.model}
-              onChange={handleModelChange}
-              disabled={isGenerating}
-            />
-            <Separator />
-            <ImageSizeSelector
-              value={params.sizeConfig}
-              onChange={handleSizeConfigChange}
-              modelId={params.model}
-              disabled={isGenerating}
-            />
-            <Separator />
-            <GenerationCountSelector
-              value={params.generationCount}
-              onChange={handleGenerationCountChange}
-              disabled={isGenerating}
-            />
-            <Separator />
-            <FormatSelector
-              value={params.outputFormat}
-              onChange={handleFormatChange}
-              disabled={isGenerating}
-              modelId={params.model}
-            />
           </div>
         </DialogContent>
       </Dialog>
