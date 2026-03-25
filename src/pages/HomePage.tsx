@@ -1,17 +1,19 @@
 /**
  * 首页 - 文生图主界面
  * 参考官方体验中心设计风格
+ * 参考文档: https://www.volcengine.com/docs/82379/1824121
  */
 
 import { useState, useCallback } from "react"
-import { Sparkles, Settings, History, ImageIcon } from "lucide-react"
+import { Sparkles, Settings, History, ImageIcon, Trash2 } from "lucide-react"
 import { SettingsDialog } from "@/components/settings/SettingsDialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { PromptInput } from "@/components/generation/PromptInput"
 import { ModelSelector } from "@/components/generation/ModelSelector"
-import { SizeSelector } from "@/components/generation/SizeSelector"
+import { ImageSizeSelector } from "@/components/generation/ImageSizeSelector"
+import { GenerationCountSelector } from "@/components/generation/GenerationCountSelector"
 import { FormatSelector } from "@/components/generation/FormatSelector"
 import { GenerateButton } from "@/components/generation/GenerateButton"
 import { ImageResult } from "@/components/image/ImageResult"
@@ -19,13 +21,14 @@ import {
   generateImage,
   getDefaultParams,
   getSupportedFormats,
+  generateSizeString,
 } from "@/services/api"
 import type {
   GenerationParams,
   GenerationTask,
   ModelId,
-  ImageSize,
   ImageFormat,
+  ImageSizeConfig,
 } from "@/types"
 
 export function HomePage() {
@@ -53,17 +56,26 @@ export function HomePage() {
       )
 
       // 如果不支持，自动切换到第一个支持的格式
-      const newFormat = isCurrentFormatSupported
+      const newFormat: ImageFormat = isCurrentFormatSupported
         ? prev.outputFormat
-        : (supportedFormats[0]?.value ?? "jpeg")
+        : (supportedFormats[0]?.value as ImageFormat ?? "jpeg")
 
       return { ...prev, model, outputFormat: newFormat }
     })
   }, [])
 
-  // 处理尺寸变化
-  const handleSizeChange = useCallback((size: ImageSize) => {
-    setParams((prev) => ({ ...prev, size }))
+  // 处理尺寸配置变化
+  const handleSizeConfigChange = useCallback((sizeConfig: ImageSizeConfig) => {
+    setParams((prev) => ({
+      ...prev,
+      sizeConfig,
+      size: generateSizeString(sizeConfig),
+    }))
+  }, [])
+
+  // 处理生成数量变化
+  const handleGenerationCountChange = useCallback((generationCount: number) => {
+    setParams((prev) => ({ ...prev, generationCount }))
   }, [])
 
   // 处理格式变化
@@ -118,6 +130,16 @@ export function HomePage() {
       handleGenerate()
     }
   }, [currentTask, handleGenerate])
+
+  // 删除历史记录
+  const handleDeleteHistory = useCallback((taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setHistory((prev) => prev.filter((task) => task.id !== taskId))
+    // 如果删除的是当前显示的任务，清空当前任务
+    if (currentTask?.id === taskId) {
+      setCurrentTask(null)
+    }
+  }, [currentTask])
 
   const canGenerate = params.prompt.trim().length > 0
   const isGenerating = currentTask?.status === "loading"
@@ -194,20 +216,32 @@ export function HomePage() {
 
                 <Separator />
 
-                {/* 参数设置 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SizeSelector
-                    value={params.size}
-                    onChange={handleSizeChange}
-                    disabled={isGenerating}
-                  />
-                  <FormatSelector
-                    value={params.outputFormat}
-                    onChange={handleFormatChange}
-                    disabled={isGenerating}
-                    modelId={params.model}
-                  />
-                </div>
+                {/* 图片尺寸设置 */}
+                <ImageSizeSelector
+                  value={params.sizeConfig}
+                  onChange={handleSizeConfigChange}
+                  modelId={params.model}
+                  disabled={isGenerating}
+                />
+
+                <Separator />
+
+                {/* 生成数量设置 */}
+                <GenerationCountSelector
+                  value={params.generationCount}
+                  onChange={handleGenerationCountChange}
+                  disabled={isGenerating}
+                />
+
+                <Separator />
+
+                {/* 输出格式设置 */}
+                <FormatSelector
+                  value={params.outputFormat}
+                  onChange={handleFormatChange}
+                  disabled={isGenerating}
+                  modelId={params.model}
+                />
 
                 {/* 生成按钮 */}
                 <GenerateButton
@@ -232,7 +266,7 @@ export function HomePage() {
                     {history.slice(0, 5).map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                        className="flex items-center justify-between p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors group"
                         onClick={() => setCurrentTask(task)}
                       >
                         <div className="flex-1 min-w-0 mr-4">
@@ -241,22 +275,30 @@ export function HomePage() {
                             {new Date(task.createdAt).toLocaleString()}
                           </p>
                         </div>
-                        <Badge
-                          variant={
-                            task.status === "success"
-                              ? "default"
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge
+                            variant={
+                              task.status === "success"
+                                ? "default"
+                                : task.status === "error"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {task.status === "success"
+                              ? "成功"
                               : task.status === "error"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                          className="shrink-0"
-                        >
-                          {task.status === "success"
-                            ? "成功"
-                            : task.status === "error"
-                            ? "失败"
-                            : "生成中"}
-                        </Badge>
+                              ? "失败"
+                              : "生成中"}
+                          </Badge>
+                          <button
+                            onClick={(e) => handleDeleteHistory(task.id, e)}
+                            className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-all"
+                            title="删除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

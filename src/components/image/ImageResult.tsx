@@ -79,11 +79,18 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
 
   if (task.status === "success" && task.result) {
     const images = task.result.data
+    // 根据图片数量决定网格列数
+    const gridCols = images.length === 1 ? 1 : images.length <= 4 ? 2 : 3
 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">生成结果</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-medium">生成结果</h3>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              共 {images.length} 张
+            </span>
+          </div>
           {onRegenerate && (
             <Button variant="outline" size="sm" onClick={onRegenerate}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -92,7 +99,15 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div
+          className={`grid gap-3 ${
+            gridCols === 1
+              ? "grid-cols-1"
+              : gridCols === 2
+              ? "grid-cols-2"
+              : "grid-cols-2 md:grid-cols-3"
+          }`}
+        >
           {images.map((image, index) => (
             <ImageCard key={index} image={image} index={index} />
           ))}
