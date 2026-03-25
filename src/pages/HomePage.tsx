@@ -1,6 +1,6 @@
 /**
- * 首页 - 文生图主界面
- * 参考即梦AI设计风格 - 居中大输入框+功能卡片布局
+ * 首页 - 仿制即梦AI设计风格
+ * 功能：Agent模式、图片生成、视频生成
  * 参考文档: https://www.volcengine.com/docs/82379/1824121
  */
 
@@ -10,12 +10,10 @@ import {
   Settings,
   History,
   Trash2,
-  Wand2,
-  Zap,
   Search,
   Palette,
-  ChevronDown,
   X,
+  Wand2,
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { FeatureSelector, type FeatureType } from "@/components/generation/FeatureSelector"
+import { ReferenceImageUpload } from "@/components/generation/ReferenceImageUpload"
+import { FeatureCards } from "@/components/generation/FeatureCards"
 import { ModelSelector } from "@/components/generation/ModelSelector"
 import { ImageSizeSelector } from "@/components/generation/ImageSizeSelector"
 import { GenerationCountSelector } from "@/components/generation/GenerationCountSelector"
@@ -46,42 +47,6 @@ import type {
   ImageSizeConfig,
 } from "@/types"
 
-// 功能快捷入口数据
-const FEATURE_CARDS = [
-  {
-    id: "text2img",
-    title: "文生图",
-    desc: "Seedream 2.0",
-    icon: Sparkles,
-    color: "from-blue-500 to-cyan-500",
-    bgColor: "bg-blue-50 dark:bg-blue-950/30",
-  },
-  {
-    id: "img2img",
-    title: "图生图",
-    desc: "智能风格迁移",
-    icon: Palette,
-    color: "from-purple-500 to-pink-500",
-    bgColor: "bg-purple-50 dark:bg-purple-950/30",
-  },
-  {
-    id: "smart",
-    title: "智能画布",
-    desc: "无限创意空间",
-    icon: Wand2,
-    color: "from-amber-500 to-orange-500",
-    bgColor: "bg-amber-50 dark:bg-amber-950/30",
-  },
-  {
-    id: "inspiration",
-    title: "灵感搜索",
-    desc: "探索创意世界",
-    icon: Search,
-    color: "from-emerald-500 to-teal-500",
-    bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
-  },
-]
-
 // 提示词示例
 const PROMPT_EXAMPLES = [
   "一只可爱的橘猫在樱花树下打盹，阳光透过花瓣洒下，温馨治愈风格",
@@ -91,6 +56,12 @@ const PROMPT_EXAMPLES = [
 ]
 
 export function HomePage() {
+  // 当前功能模式
+  const [featureMode, setFeatureMode] = useState<FeatureType>("agent")
+
+  // 参考图片
+  const [referenceImage, setReferenceImage] = useState<string | null>(null)
+
   // 生成参数状态
   const [params, setParams] = useState<GenerationParams>(getDefaultParams())
 
@@ -103,6 +74,21 @@ export function HomePage() {
   // 设置对话框状态
   const [showSettings, setShowSettings] = useState(false)
 
+  // 处理功能模式切换
+  const handleFeatureChange = useCallback((mode: FeatureType) => {
+    setFeatureMode(mode)
+  }, [])
+
+  // 处理功能卡片选择
+  const handleFeatureCardSelect = useCallback((feature: "image" | "video") => {
+    setFeatureMode(feature)
+  }, [])
+
+  // 处理参考图选择
+  const handleReferenceImageSelect = useCallback((imageUrl: string | null) => {
+    setReferenceImage(imageUrl)
+  }, [])
+
   // 处理提示词变化
   const handlePromptChange = useCallback((prompt: string) => {
     setParams((prev) => ({ ...prev, prompt }))
@@ -111,17 +97,13 @@ export function HomePage() {
   // 处理模型变化
   const handleModelChange = useCallback((model: ModelId) => {
     setParams((prev) => {
-      // 检查当前格式是否被新模型支持
       const supportedFormats = getSupportedFormats(model)
       const isCurrentFormatSupported = supportedFormats.some(
         (f) => f.value === prev.outputFormat
       )
-
-      // 如果不支持，自动切换到第一个支持的格式
       const newFormat: ImageFormat = isCurrentFormatSupported
         ? prev.outputFormat
         : (supportedFormats[0]?.value as ImageFormat ?? "jpeg")
-
       return { ...prev, model, outputFormat: newFormat }
     })
   }, [])
@@ -147,11 +129,8 @@ export function HomePage() {
 
   // 处理生成
   const handleGenerate = useCallback(async () => {
-    if (!params.prompt.trim()) {
-      return
-    }
+    if (!params.prompt.trim()) return
 
-    // 创建新任务
     const task: GenerationTask = {
       id: Date.now().toString(),
       status: "loading",
@@ -163,14 +142,12 @@ export function HomePage() {
 
     try {
       const result = await generateImage(params)
-
       const completedTask: GenerationTask = {
         ...task,
         status: "success",
         result,
         completedAt: Date.now(),
       }
-
       setCurrentTask(completedTask)
       setHistory((prev) => [completedTask, ...prev])
     } catch (error) {
@@ -180,7 +157,6 @@ export function HomePage() {
         error: error instanceof Error ? error.message : "生成失败",
         completedAt: Date.now(),
       }
-
       setCurrentTask(failedTask)
     }
   }, [params])
@@ -197,7 +173,6 @@ export function HomePage() {
   const handleDeleteHistory = useCallback((taskId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setHistory((prev) => prev.filter((task) => task.id !== taskId))
-    // 如果删除的是当前显示的任务，清空当前任务
     if (currentTask?.id === taskId) {
       setCurrentTask(null)
     }
@@ -218,17 +193,15 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-slate-50/80 via-white to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
-      {/* 背景装饰层 - 更柔和的光晕 */}
+      {/* 背景装饰层 */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
-        {/* 顶部渐变光晕 */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-indigo-500/5 via-purple-500/3 to-transparent rounded-full blur-3xl" />
-        {/* 装饰性光点 */}
         <div className="absolute top-20 right-20 w-2 h-2 rounded-full bg-indigo-400/30" />
         <div className="absolute top-40 left-32 w-1.5 h-1.5 rounded-full bg-purple-400/30" />
         <div className="absolute top-60 right-40 w-1 h-1 rounded-full bg-pink-400/30" />
       </div>
 
-      {/* 顶部导航 - 极简风格 */}
+      {/* 顶部导航 */}
       <header className="sticky top-0 z-50 w-full">
         <div className="border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -258,7 +231,7 @@ export function HomePage() {
         </div>
       </header>
 
-      {/* 主内容区 - 居中布局 */}
+      {/* 主内容区 */}
       <main className="max-w-4xl mx-auto px-4 pt-12 pb-20">
         {/* 标题区 */}
         <div className="text-center mb-10 space-y-3">
@@ -274,37 +247,48 @@ export function HomePage() {
           </p>
         </div>
 
-        {/* 中央大输入框 - 核心交互区 */}
+        {/* 中央输入区 - 仿制即梦风格 */}
         <div className="relative mb-8 animate-fade-in-up">
           <div className="relative group">
             {/* 输入框外发光效果 */}
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl blur-sm opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
 
             <div className="relative bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 overflow-hidden">
-              {/* 输入区域 */}
+              {/* 输入区域 - 包含参考图和文本框 */}
               <div className="p-4">
-                <Textarea
-                  placeholder="描述你想要生成的图片，例如：一只可爱的橘猫在樱花树下打盹..."
-                  value={params.prompt}
-                  onChange={(e) => handlePromptChange(e.target.value)}
-                  disabled={isGenerating}
-                  className="min-h-[100px] resize-none border-0 bg-transparent text-base leading-relaxed placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
-                />
+                <div className="flex gap-4">
+                  {/* 左侧参考图上传 */}
+                  <div className="shrink-0 pt-1">
+                    <ReferenceImageUpload
+                      imageUrl={referenceImage}
+                      onImageSelect={handleReferenceImageSelect}
+                    />
+                  </div>
+
+                  {/* 右侧文本输入 */}
+                  <div className="flex-1">
+                    <Textarea
+                      placeholder="Seedance 2.0全能参考，上传参考，输入文字，创意无限可能..."
+                      value={params.prompt}
+                      onChange={(e) => handlePromptChange(e.target.value)}
+                      disabled={isGenerating}
+                      className="min-h-[100px] resize-none border-0 bg-transparent text-base leading-relaxed placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* 底部工具栏 */}
               <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50">
-                {/* 左侧：模式选择 */}
+                {/* 左侧：功能选择和其他选项 */}
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full px-3"
-                  >
-                    <Zap className="h-3.5 w-3.5 mr-1" />
-                    Agent 模式
-                    <ChevronDown className="h-3 w-3 ml-1" />
-                  </Button>
+                  {/* 功能选择下拉 */}
+                  <FeatureSelector
+                    value={featureMode}
+                    onChange={handleFeatureChange}
+                  />
+
+                  {/* 灵感搜索 */}
                   <Badge
                     variant="secondary"
                     className="h-7 text-xs font-normal bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer rounded-full px-3"
@@ -312,6 +296,8 @@ export function HomePage() {
                     <Search className="h-3 w-3 mr-1" />
                     灵感搜索
                   </Badge>
+
+                  {/* 创意设计 */}
                   <Badge
                     variant="secondary"
                     className="h-7 text-xs font-normal bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer rounded-full px-3"
@@ -346,7 +332,7 @@ export function HomePage() {
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4 mr-2" />
+                        <Wand2 className="h-4 w-4 mr-2" />
                         生成
                       </>
                     )}
@@ -381,34 +367,12 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* 功能快捷入口卡片 */}
+        {/* 功能卡片区域 */}
         <div className="mb-12 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {FEATURE_CARDS.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <button
-                  key={feature.id}
-                  onClick={() => feature.id === "text2img" && setShowSettings(false)}
-                  className="group relative p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 text-left"
-                >
-                  {/* 图标 */}
-                  <div
-                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
-                  {/* 文字 */}
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {feature.desc}
-                  </p>
-                </button>
-              )
-            })}
-          </div>
+          <FeatureCards
+            activeFeature={featureMode}
+            onFeatureSelect={handleFeatureCardSelect}
+          />
         </div>
 
         {/* 生成结果展示区 */}
@@ -501,35 +465,25 @@ export function HomePage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            {/* 模型选择 */}
             <ModelSelector
               value={params.model}
               onChange={handleModelChange}
               disabled={isGenerating}
             />
-
             <Separator />
-
-            {/* 图片尺寸设置 */}
             <ImageSizeSelector
               value={params.sizeConfig}
               onChange={handleSizeConfigChange}
               modelId={params.model}
               disabled={isGenerating}
             />
-
             <Separator />
-
-            {/* 生成数量设置 */}
             <GenerationCountSelector
               value={params.generationCount}
               onChange={handleGenerationCountChange}
               disabled={isGenerating}
             />
-
             <Separator />
-
-            {/* 输出格式设置 */}
             <FormatSelector
               value={params.outputFormat}
               onChange={handleFormatChange}
