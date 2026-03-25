@@ -9,11 +9,6 @@ export const MODEL_CONFIG = {
     supports: ['text-to-image', 'image-to-image', 'series'] as const,
     sizes: ['2K', '4K'] as const,
   },
-  'doubao-seedream-4-0-250828': {
-    name: 'Seedream 4.0',
-    supports: ['text-to-image', 'image-to-image', 'series'] as const,
-    sizes: ['1K', '2K', '4K'] as const,
-  },
 } as const
 
 export const API_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'

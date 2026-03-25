@@ -113,23 +113,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     supportedSizes: ["2K", "4K"],
     maxGenerationCount: 15,
   },
-  {
-    id: "doubao-seedream-4-0-250828",
-    name: "Seedream 4.0",
-    description: "经典版本，稳定可靠",
-    supports: {
-      textToImage: true,
-      imageToImage: true,
-      multiImage: true,
-      streaming: true,
-      webSearch: false,
-    },
-    // 4.0 仅支持 jpeg
-    supportedFormats: ["jpeg"],
-    // 4.0 支持 1K、2K 和 4K
-    supportedSizes: ["2K", "4K"],
-    maxGenerationCount: 15,
-  },
 ]
 
 // 图片尺寸选项（向后兼容）

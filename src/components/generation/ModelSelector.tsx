@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select"
 import { AVAILABLE_MODELS } from "@/services/api"
 import type { ModelId } from "@/types"
-import { Cpu, Zap, Star } from "lucide-react"
+import { Zap, Star } from "lucide-react"
 
 interface ModelSelectorProps {
   value: ModelId
@@ -22,7 +22,6 @@ interface ModelSelectorProps {
 const MODEL_ICONS: Record<ModelId, React.ReactNode> = {
   "doubao-seedream-5-0-lite-260128": <Zap className="h-4 w-4 text-yellow-500" />,
   "doubao-seedream-4-5-251128": <Star className="h-4 w-4 text-blue-500" />,
-  "doubao-seedream-4-0-250828": <Cpu className="h-4 w-4 text-green-500" />,
 }
 
 export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {

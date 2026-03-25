@@ -7,7 +7,6 @@
 export type ModelId =
   | "doubao-seedream-5-0-lite-260128"
   | "doubao-seedream-4-5-251128"
-  | "doubao-seedream-4-0-250828"
 
 // 模型信息
 export interface ModelInfo {
