@@ -11,14 +11,9 @@
 
 ## 技术栈
 React18 | TypeScript | Zustand | shadcn/ui | Tailwind | Vite | Lucide
-
 ## 目录
 src/components/{ui,layout,image,generation}/, pages/, hooks/, services/, stores/, types/, lib/
-
-## API
-URL: `https://ark.cn-beijing.volces.com/api/v3` | Key: `VITE_ARK_API_KEY`
 **禁止**：Key硬编码或提交版本库
-
 ## 文件操作
 创建前检查 → 编辑前读取 → 用SearchReplace → 删除用DeleteFile
 
@@ -36,6 +31,4 @@ npm run dev/build/lint/typecheck | 完成后必须lint+typecheck
 
 ## 模型
 5.0-lite: doubao-seedream-5-0-lite-260128 | 4.5: doubao-seedream-4-5-251128 | 4.0: doubao-seedream-4-0-250828
-
----
-v1.3 | 2026-01-16
+记得使用两个技能，记得参考官方文档https://www.volcengine.com/docs/82379/1824121?lang=zh，https://www.volcengine.com/docs/82379/1541523?lang=zh

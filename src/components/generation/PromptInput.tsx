@@ -1,110 +1,75 @@
-import { useState } from 'react'
-import { Lightbulb, Globe, Wand2 } from 'lucide-react'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+/**
+ * 提示词输入组件
+ */
+
+import { Sparkles, X } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 interface PromptInputProps {
   value: string
   onChange: (value: string) => void
-  placeholder?: string
-  showWebSearch?: boolean
-  webSearchEnabled?: boolean
-  onWebSearchToggle?: (enabled: boolean) => void
-  className?: string
   disabled?: boolean
 }
 
-const PROMPT_SUGGESTIONS = [
-  '一只可爱的猫咪在阳光下打盹',
-  '未来城市的天际线，霓虹灯闪烁',
-  '山水画风格的瀑布与松树',
-  '一位穿着汉服的少女在樱花树下',
+// 提示词示例
+const PROMPT_EXAMPLES = [
+  "一只可爱的橘猫在樱花树下打盹，阳光透过花瓣洒下，温馨治愈风格",
+  "未来城市夜景，霓虹灯闪烁，赛博朋克风格，高楼林立，飞行器穿梭",
+  "古风少女在竹林中抚琴，水墨画风格，意境悠远，淡雅清新",
+  "海底世界，五彩斑斓的珊瑚礁，热带鱼群游弋，写实风格，光影柔和",
 ]
 
-export function PromptInput({
-  value,
-  onChange,
-  placeholder = '描述你想要生成的图片...',
-  showWebSearch = false,
-  webSearchEnabled = false,
-  onWebSearchToggle,
-  className,
-  disabled = false,
-}: PromptInputProps) {
-  const [isFocused, setIsFocused] = useState(false)
+export function PromptInput({ value, onChange, disabled }: PromptInputProps) {
+  const handleClear = () => {
+    onChange("")
+  }
 
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange(suggestion)
+  const handleExampleClick = (example: string) => {
+    onChange(example)
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">提示词</label>
-        {showWebSearch && (
+    <div className="space-y-4">
+      {/* 输入框 */}
+      <div className="relative">
+        <Textarea
+          placeholder="描述你想要生成的图片，例如：一只可爱的橘猫在樱花树下打盹..."
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="min-h-[120px] resize-none pr-12 text-base leading-relaxed"
+        />
+        {value && (
           <Button
-            variant={webSearchEnabled ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onWebSearchToggle?.(!webSearchEnabled)}
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={handleClear}
             disabled={disabled}
-            className="gap-2"
           >
-            <Globe className="h-4 w-4" />
-            联网搜索
-            {webSearchEnabled && (
-              <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
-                开启
-              </Badge>
-            )}
+            <X className="h-4 w-4" />
           </Button>
         )}
       </div>
 
-      <div
-        className={cn(
-          'relative rounded-lg border transition-all duration-200',
-          isFocused && 'ring-2 ring-ring ring-offset-2',
-          disabled && 'opacity-50 cursor-not-allowed'
-        )}
-      >
-        <Textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="min-h-[120px] resize-none border-0 focus-visible:ring-0"
-          rows={4}
-        />
-        
-        {value.length > 0 && (
-          <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-            {value.length} 字符
-          </div>
-        )}
-      </div>
-
+      {/* 提示词示例 */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Lightbulb className="h-4 w-4" />
-          <span>试试这些提示词：</span>
+          <Sparkles className="h-4 w-4" />
+          <span>试试这些示例</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {PROMPT_SUGGESTIONS.map((suggestion, index) => (
-            <Button
+          {PROMPT_EXAMPLES.map((example, index) => (
+            <Badge
               key={index}
-              variant="outline"
-              size="sm"
-              onClick={() => handleSuggestionClick(suggestion)}
-              disabled={disabled}
-              className="h-auto py-1.5 px-3 text-xs"
+              variant="secondary"
+              className="cursor-pointer hover:bg-secondary/80 transition-colors max-w-[200px] truncate"
+              onClick={() => !disabled && handleExampleClick(example)}
             >
-              <Wand2 className="h-3 w-3 mr-1.5" />
-              {suggestion}
-            </Button>
+              <span className="truncate">{example.slice(0, 20)}...</span>
+            </Badge>
           ))}
         </div>
       </div>

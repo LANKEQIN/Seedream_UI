@@ -1,87 +1,58 @@
-import { Sparkles, Zap, Star } from 'lucide-react'
+/**
+ * 模型选择组件
+ */
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { MODEL_CONFIG } from '@/lib/constants'
-import { cn } from '@/lib/utils'
+} from "@/components/ui/select"
+import { AVAILABLE_MODELS } from "@/services/api"
+import type { ModelId } from "@/types"
+import { Cpu, Zap, Star } from "lucide-react"
 
 interface ModelSelectorProps {
-  value: string
-  onChange: (value: string) => void
-  className?: string
+  value: ModelId
+  onChange: (value: ModelId) => void
   disabled?: boolean
 }
 
-const modelIcons: Record<string, React.ReactNode> = {
-  'doubao-seedream-5-0-lite-260128': <Sparkles className="h-4 w-4" />,
-  'doubao-seedream-4-5-251128': <Star className="h-4 w-4" />,
-  'doubao-seedream-4-0-250828': <Zap className="h-4 w-4" />,
+const MODEL_ICONS: Record<ModelId, React.ReactNode> = {
+  "doubao-seedream-5-0-lite-260128": <Zap className="h-4 w-4 text-yellow-500" />,
+  "doubao-seedream-4-5-251128": <Star className="h-4 w-4 text-blue-500" />,
+  "doubao-seedream-4-0-250828": <Cpu className="h-4 w-4 text-green-500" />,
 }
 
-const modelBadges: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-  'doubao-seedream-5-0-lite-260128': { label: '最新', variant: 'default' },
-  'doubao-seedream-4-5-251128': { label: '推荐', variant: 'secondary' },
-  'doubao-seedream-4-0-250828': { label: '稳定', variant: 'outline' },
-}
-
-export function ModelSelector({
-  value,
-  onChange,
-  className,
-  disabled = false,
-}: ModelSelectorProps) {
-  const selectedModel = MODEL_CONFIG[value as keyof typeof MODEL_CONFIG]
-
+export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {
   return (
-    <div className={cn('space-y-2', className)}>
-      <label className="text-sm font-medium">模型选择</label>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <div className="space-y-2">
+      <label className="text-sm font-medium">选择模型</label>
+      <Select
+        value={value}
+        onValueChange={(v) => onChange(v as ModelId)}
+        disabled={disabled}
+      >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="选择模型">
-            {selectedModel && (
-              <div className="flex items-center gap-2">
-                {modelIcons[value]}
-                <span>{selectedModel.name}</span>
-              </div>
-            )}
-          </SelectValue>
+          <SelectValue placeholder="选择模型" />
         </SelectTrigger>
         <SelectContent>
-          {Object.entries(MODEL_CONFIG).map(([modelId, config]) => (
-            <SelectItem key={modelId} value={modelId}>
-              <div className="flex items-center gap-3 py-1">
-                <div className="flex items-center gap-2">
-                  {modelIcons[modelId]}
-                  <span className="font-medium">{config.name}</span>
+          {AVAILABLE_MODELS.map((model) => (
+            <SelectItem key={model.id} value={model.id}>
+              <div className="flex items-center gap-2">
+                {MODEL_ICONS[model.id]}
+                <div className="flex flex-col">
+                  <span className="font-medium">{model.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {model.description}
+                  </span>
                 </div>
-                <Badge variant={modelBadges[modelId]?.variant || 'outline'} className="text-xs">
-                  {modelBadges[modelId]?.label}
-                </Badge>
               </div>
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-
-      {selectedModel && (
-        <div className="p-3 rounded-lg bg-muted/50 space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {selectedModel.supports.map((feature) => (
-              <Badge key={feature} variant="secondary" className="text-xs">
-                {feature}
-              </Badge>
-            ))}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            支持分辨率：{selectedModel.sizes.join(' / ')}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
