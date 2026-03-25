@@ -145,52 +145,76 @@ export function HomePage() {
   const isGenerating = currentTask?.status === "loading"
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* 顶部导航 */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold">Seedream UI</h1>
-              <p className="text-xs text-muted-foreground">AI 图片生成</p>
-            </div>
-          </div>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* 背景装饰层 */}
+      <div className="fixed inset-0 -z-10">
+        {/* 主渐变背景 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/50" />
 
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="hidden sm:flex items-center gap-1">
-              <ImageIcon className="h-3 w-3" />
-              文生图
-            </Badge>
-            <div className="text-sm text-muted-foreground hidden sm:block">
-              火山引擎 Seedream
+        {/* 装饰性渐变光晕 */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+
+        {/* 点状装饰 */}
+        <div className="absolute inset-0 bg-dots opacity-50" />
+      </div>
+
+      {/* 顶部导航 - 玻璃态效果 */}
+      <header className="sticky top-0 z-50 w-full">
+        <div className="glass border-b border-white/20 dark:border-slate-800/50">
+          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3 group cursor-pointer">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-all duration-300">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Seedream UI</h1>
+                <p className="text-xs text-muted-foreground">AI 图片生成</p>
+              </div>
             </div>
-            <SettingsDialog />
+
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
+                <ImageIcon className="h-3 w-3 text-indigo-500" />
+                <span className="text-indigo-600 dark:text-indigo-400">文生图</span>
+              </Badge>
+              <div className="text-sm text-muted-foreground hidden sm:block px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
+                火山引擎 Seedream
+              </div>
+              <SettingsDialog />
+            </div>
           </div>
         </div>
       </header>
 
       {/* 主内容区 */}
       <main className="container mx-auto px-4 py-8">
-        {/* 标题区 */}
-        <div className="text-center mb-10 space-y-3">
-          <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            体验图片生成，让创意涌动
+        {/* 标题区 - 更有视觉冲击力 */}
+        <div className="text-center mb-12 space-y-4 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4">
+            <Sparkles className="h-4 w-4 text-indigo-500" />
+            <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">AI 驱动的创意工具</span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+            <span className="text-gradient-primary">体验图片生成</span>
+            <br />
+            <span className="text-foreground">让创意涌动</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">
             输入文字描述，AI 将为你生成精美的图片。支持多种风格和尺寸，释放你的想象力。
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           {/* 左侧：输入区 */}
-          <div className="space-y-6">
-            <Card className="shadow-lg">
+          <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <Card className="shadow-elegant border-slate-200/50 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm transition-shadow duration-300 hover:shadow-card-hover">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-muted-foreground" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
+                    <Settings className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
                   创作设置
                 </CardTitle>
               </CardHeader>
@@ -202,11 +226,14 @@ export function HomePage() {
                   disabled={isGenerating}
                 />
 
-                <Separator />
+                <Separator className="bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
 
                 {/* 提示词输入 */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">描述你的创意</label>
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-indigo-500" />
+                    描述你的创意
+                  </label>
                   <PromptInput
                     value={params.prompt}
                     onChange={handlePromptChange}
@@ -214,7 +241,7 @@ export function HomePage() {
                   />
                 </div>
 
-                <Separator />
+                <Separator className="bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
 
                 {/* 图片尺寸设置 */}
                 <ImageSizeSelector
@@ -224,7 +251,7 @@ export function HomePage() {
                   disabled={isGenerating}
                 />
 
-                <Separator />
+                <Separator className="bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
 
                 {/* 生成数量设置 */}
                 <GenerationCountSelector
@@ -233,7 +260,7 @@ export function HomePage() {
                   disabled={isGenerating}
                 />
 
-                <Separator />
+                <Separator className="bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
 
                 {/* 输出格式设置 */}
                 <FormatSelector
@@ -244,34 +271,42 @@ export function HomePage() {
                 />
 
                 {/* 生成按钮 */}
-                <GenerateButton
-                  onClick={handleGenerate}
-                  loading={isGenerating}
-                  disabled={!canGenerate}
-                />
+                <div className="pt-2">
+                  <GenerateButton
+                    onClick={handleGenerate}
+                    loading={isGenerating}
+                    disabled={!canGenerate}
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            {/* 历史记录 */}
+            {/* 历史记录 - 精致卡片 */}
             {history.length > 0 && (
-              <Card>
+              <Card className="shadow-soft border-slate-200/50 dark:border-slate-800/50 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm animate-fade-in">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <History className="h-4 w-4 text-muted-foreground" />
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                      <History className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </div>
                     最近生成
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {history.length} 条
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {history.slice(0, 5).map((task) => (
+                    {history.slice(0, 5).map((task, index) => (
                       <div
                         key={task.id}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors group"
+                        className="flex items-center justify-between p-3 rounded-xl hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 dark:hover:from-indigo-950/30 dark:hover:to-purple-950/30 cursor-pointer transition-all duration-200 group border border-transparent hover:border-indigo-500/20"
                         onClick={() => setCurrentTask(task)}
+                        style={{ animationDelay: `${index * 0.05}s` }}
                       >
                         <div className="flex-1 min-w-0 mr-4">
-                          <p className="text-sm truncate">{task.params.prompt}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm truncate font-medium">{task.params.prompt}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {new Date(task.createdAt).toLocaleString()}
                           </p>
                         </div>
@@ -284,6 +319,7 @@ export function HomePage() {
                                 ? "destructive"
                                 : "secondary"
                             }
+                            className="text-xs"
                           >
                             {task.status === "success"
                               ? "成功"
@@ -293,7 +329,7 @@ export function HomePage() {
                           </Badge>
                           <button
                             onClick={(e) => handleDeleteHistory(task.id, e)}
-                            className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-all"
+                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-all"
                             title="删除"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -308,22 +344,28 @@ export function HomePage() {
           </div>
 
           {/* 右侧：结果展示区 */}
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <ImageResult
-              task={currentTask}
-              onRegenerate={
-                currentTask?.status === "error" ? handleRegenerate : undefined
-              }
-            />
+          <div className="lg:sticky lg:top-24 lg:self-start animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="animate-scale-in">
+              <ImageResult
+                task={currentTask}
+                onRegenerate={
+                  currentTask?.status === "error" ? handleRegenerate : undefined
+                }
+              />
+            </div>
           </div>
         </div>
       </main>
 
-      {/* 底部 */}
-      <footer className="border-t mt-16 py-6">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>Powered by 火山引擎 Seedream</p>
-          <p className="mt-1">
+      {/* 底部 - 简约设计 */}
+      <footer className="border-t border-slate-200/50 dark:border-slate-800/50 mt-20 py-8 bg-white/50 dark:bg-slate-950/50">
+        <div className="container mx-auto px-4 text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Sparkles className="h-4 w-4 text-indigo-500" />
+            <span>Powered by</span>
+            <span className="font-medium text-foreground">火山引擎 Seedream</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
             点击右上角设置按钮配置 API Key
           </p>
         </div>
