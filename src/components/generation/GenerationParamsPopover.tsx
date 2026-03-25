@@ -5,7 +5,7 @@
  * 使用 Portal 渲染，避免被父容器 overflow 裁剪
  */
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 import {
   Settings2,
@@ -19,6 +19,8 @@ import {
   Check,
   X,
   Edit3,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
@@ -30,7 +32,11 @@ import {
   getModelSupportedSizes,
   getSupportedFormats,
   GENERATION_COUNT_OPTIONS,
+  validateImageSize,
+  getSuggestedValidSize,
+  SIZE_VALIDATION,
 } from "@/services/api"
+import type { SizeValidationResult } from "@/services/api"
 
 // 比例图标映射
 const ratioIconMap: Record<string, React.ReactNode> = {
@@ -76,6 +82,14 @@ export function GenerationParamsPopover({
   // 获取当前模型支持的分辨率
   const supportedSizes = getModelSupportedSizes(modelId)
   const supportedFormats = getSupportedFormats(modelId)
+
+  // 验证自定义尺寸（使用 useMemo 避免级联渲染）
+  const validation = useMemo<SizeValidationResult>(() => {
+    if (sizeConfig.customWidth && sizeConfig.customHeight) {
+      return validateImageSize(sizeConfig.customWidth, sizeConfig.customHeight)
+    }
+    return { isValid: true }
+  }, [sizeConfig.customWidth, sizeConfig.customHeight])
 
   // 计算下拉菜单位置
   const updatePosition = useCallback(() => {
@@ -276,38 +290,98 @@ export function GenerationParamsPopover({
 
         {/* 自定义尺寸输入 */}
         {showCustomSize && (
-          <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-            <div className="space-y-1">
-              <span className="text-[10px] text-slate-400">宽度 (W)</span>
-              <Input
-                type="number"
-                placeholder="2048"
-                value={sizeConfig.customWidth || ""}
-                onChange={(e) => handleCustomWidthChange(e.target.value)}
+          <div className="space-y-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <span className="text-[10px] text-slate-400">宽度 (W)</span>
+                <Input
+                  type="number"
+                  placeholder={`${SIZE_VALIDATION.MIN_DIMENSION}`}
+                  value={sizeConfig.customWidth || ""}
+                  onChange={(e) => handleCustomWidthChange(e.target.value)}
+                  disabled={disabled}
+                  className={cn(
+                    "h-8 text-xs",
+                    !validation.isValid && "border-red-500 focus-visible:ring-red-500"
+                  )}
+                  min={SIZE_VALIDATION.MIN_DIMENSION}
+                  max={SIZE_VALIDATION.MAX_DIMENSION}
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] text-slate-400">高度 (H)</span>
+                <Input
+                  type="number"
+                  placeholder={`${SIZE_VALIDATION.MIN_DIMENSION}`}
+                  value={sizeConfig.customHeight || ""}
+                  onChange={(e) => handleCustomHeightChange(e.target.value)}
+                  disabled={disabled}
+                  className={cn(
+                    "h-8 text-xs",
+                    !validation.isValid && "border-red-500 focus-visible:ring-red-500"
+                  )}
+                  min={SIZE_VALIDATION.MIN_DIMENSION}
+                  max={SIZE_VALIDATION.MAX_DIMENSION}
+                />
+              </div>
+            </div>
+
+            {/* 验证结果提示 */}
+            {sizeConfig.customWidth && sizeConfig.customHeight && (
+              <div
+                className={cn(
+                  "flex items-start gap-1.5 p-1.5 rounded text-[10px]",
+                  validation.isValid
+                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                    : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                )}
+              >
+                {validation.isValid ? (
+                  <CheckCircle2 className="h-3 w-3 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  {validation.isValid ? (
+                    <span>
+                      有效 · {validation.totalPixels?.toLocaleString()}px
+                      {validation.warning && (
+                        <span className="text-amber-600 dark:text-amber-400 ml-1">
+                          ({validation.warning})
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span>{validation.error}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 无效时显示建议按钮 */}
+            {!validation.isValid && sizeConfig.customWidth && sizeConfig.customHeight && (
+              <button
+                type="button"
+                onClick={() => {
+                  const suggested = getSuggestedValidSize(sizeConfig.customWidth!, sizeConfig.customHeight!)
+                  onSizeConfigChange({
+                    ...sizeConfig,
+                    customWidth: suggested.width,
+                    customHeight: suggested.height,
+                  })
+                }}
                 disabled={disabled}
-                className="h-8 text-xs"
-                min={64}
-                max={8192}
-              />
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-slate-400">高度 (H)</span>
-              <Input
-                type="number"
-                placeholder="2048"
-                value={sizeConfig.customHeight || ""}
-                onChange={(e) => handleCustomHeightChange(e.target.value)}
-                disabled={disabled}
-                className="h-8 text-xs"
-                min={64}
-                max={8192}
-              />
-            </div>
-            <div className="col-span-2">
-              <p className="text-[10px] text-slate-400">
-                总像素范围: 3,686,400 - 16,777,216 | 宽高比: 1/16 - 16
-              </p>
-            </div>
+                className="w-full text-[10px] px-2 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+              >
+                应用建议: {getSuggestedValidSize(sizeConfig.customWidth || 2560, sizeConfig.customHeight || 1440).width}x
+                {getSuggestedValidSize(sizeConfig.customWidth || 2560, sizeConfig.customHeight || 1440).height}
+              </button>
+            )}
+
+            <p className="text-[10px] text-slate-400">
+              总像素: {SIZE_VALIDATION.MIN_TOTAL_PIXELS.toLocaleString()}-{SIZE_VALIDATION.MAX_TOTAL_PIXELS.toLocaleString()} | 
+              宽高比: 1:16-16:1
+            </p>
           </div>
         )}
       </div>
@@ -341,7 +415,7 @@ export function GenerationParamsPopover({
           {supportedFormats.map((format) => (
             <button
               key={format.value}
-              onClick={() => onOutputFormatChange(format.value)}
+              onClick={() => onOutputFormatChange(format.value as ImageFormat)}
               className={cn(
                 "flex items-center gap-2 px-3 py-2 text-xs rounded-lg border transition-all",
                 outputFormat === format.value

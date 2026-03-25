@@ -18,6 +18,178 @@ import { getEffectiveApiKey } from "@/stores/settings"
 
 const API_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 
+// 图片尺寸验证常量（根据官方文档）
+// 总像素范围：[2560x1440=3686400, 4096x4096=16777216]
+export const SIZE_VALIDATION = {
+  MIN_TOTAL_PIXELS: 2560 * 1440, // 3686400
+  MAX_TOTAL_PIXELS: 4096 * 4096, // 16777216
+  MIN_ASPECT_RATIO: 1 / 16, // 0.0625
+  MAX_ASPECT_RATIO: 16,
+  MIN_DIMENSION: 256, // 最小边长
+  MAX_DIMENSION: 4096, // 最大边长
+} as const
+
+// 尺寸验证结果
+export interface SizeValidationResult {
+  isValid: boolean
+  error?: string
+  warning?: string
+  // 计算值
+  totalPixels?: number
+  aspectRatio?: number
+}
+
+/**
+ * 验证自定义图片尺寸是否符合 API 要求
+ * 根据官方文档：https://www.volcengine.com/docs/82379/1541523
+ * - 总像素范围：[3686400, 16777216]
+ * - 宽高比范围：[1/16, 16]
+ * @param width 宽度（像素）
+ * @param height 高度（像素）
+ * @returns 验证结果
+ */
+export function validateImageSize(
+  width: number,
+  height: number
+): SizeValidationResult {
+  // 基础验证
+  if (!width || !height || width <= 0 || height <= 0) {
+    return { isValid: false, error: "宽度和高度必须为正数" }
+  }
+
+  // 边长验证
+  if (width < SIZE_VALIDATION.MIN_DIMENSION || height < SIZE_VALIDATION.MIN_DIMENSION) {
+    return {
+      isValid: false,
+      error: `宽度和高度不能小于 ${SIZE_VALIDATION.MIN_DIMENSION}px`,
+    }
+  }
+
+  if (width > SIZE_VALIDATION.MAX_DIMENSION || height > SIZE_VALIDATION.MAX_DIMENSION) {
+    return {
+      isValid: false,
+      error: `宽度和高度不能超过 ${SIZE_VALIDATION.MAX_DIMENSION}px`,
+    }
+  }
+
+  // 计算总像素和宽高比
+  const totalPixels = width * height
+  const aspectRatio = width / height
+
+  // 总像素验证
+  if (totalPixels < SIZE_VALIDATION.MIN_TOTAL_PIXELS) {
+    return {
+      isValid: false,
+      error: `总像素 ${totalPixels.toLocaleString()} 过小，最小需要 ${SIZE_VALIDATION.MIN_TOTAL_PIXELS.toLocaleString()} (如 2560x1440)`,
+      totalPixels,
+      aspectRatio,
+    }
+  }
+
+  if (totalPixels > SIZE_VALIDATION.MAX_TOTAL_PIXELS) {
+    return {
+      isValid: false,
+      error: `总像素 ${totalPixels.toLocaleString()} 过大，最大允许 ${SIZE_VALIDATION.MAX_TOTAL_PIXELS.toLocaleString()} (如 4096x4096)`,
+      totalPixels,
+      aspectRatio,
+    }
+  }
+
+  // 宽高比验证
+  if (aspectRatio < SIZE_VALIDATION.MIN_ASPECT_RATIO) {
+    return {
+      isValid: false,
+      error: `宽高比 ${aspectRatio.toFixed(4)} 过小，最小为 1:16`,
+      totalPixels,
+      aspectRatio,
+    }
+  }
+
+  if (aspectRatio > SIZE_VALIDATION.MAX_ASPECT_RATIO) {
+    return {
+      isValid: false,
+      error: `宽高比 ${aspectRatio.toFixed(2)} 过大，最大为 16:1`,
+      totalPixels,
+      aspectRatio,
+    }
+  }
+
+  // 接近边界的警告
+  const warnings: string[] = []
+  if (totalPixels < SIZE_VALIDATION.MIN_TOTAL_PIXELS * 1.1) {
+    warnings.push("总像素接近最小限制")
+  }
+  if (aspectRatio < SIZE_VALIDATION.MIN_ASPECT_RATIO * 2) {
+    warnings.push("宽高比接近最小限制")
+  }
+  if (aspectRatio > SIZE_VALIDATION.MAX_ASPECT_RATIO * 0.5) {
+    warnings.push("宽高比接近最大限制")
+  }
+
+  return {
+    isValid: true,
+    warning: warnings.length > 0 ? warnings.join("，") : undefined,
+    totalPixels,
+    aspectRatio,
+  }
+}
+
+/**
+ * 获取推荐的相近有效尺寸
+ * 当用户输入无效尺寸时，提供修正建议
+ * @param width 宽度
+ * @param height 高度
+ * @returns 推荐的有效尺寸
+ */
+export function getSuggestedValidSize(
+  width: number,
+  height: number
+): { width: number; height: number } {
+  // 计算当前宽高比
+  const targetRatio = width / height
+
+  // 尝试保持宽高比，调整到有效范围
+  let newWidth = width
+  let newHeight = height
+
+  // 限制宽高比
+  const clampedRatio = Math.max(
+    SIZE_VALIDATION.MIN_ASPECT_RATIO,
+    Math.min(SIZE_VALIDATION.MAX_ASPECT_RATIO, targetRatio)
+  )
+
+  // 如果宽高比被调整，重新计算尺寸
+  if (clampedRatio !== targetRatio) {
+    if (targetRatio < SIZE_VALIDATION.MIN_ASPECT_RATIO) {
+      // 太窄，增加宽度
+      newWidth = Math.round(height * SIZE_VALIDATION.MIN_ASPECT_RATIO)
+    } else {
+      // 太宽，增加高度
+      newHeight = Math.round(width / SIZE_VALIDATION.MAX_ASPECT_RATIO)
+    }
+  }
+
+  // 调整总像素到有效范围
+  const currentPixels = newWidth * newHeight
+  if (currentPixels < SIZE_VALIDATION.MIN_TOTAL_PIXELS) {
+    // 放大到最小像素
+    const scale = Math.sqrt(SIZE_VALIDATION.MIN_TOTAL_PIXELS / currentPixels)
+    newWidth = Math.round(newWidth * scale)
+    newHeight = Math.round(newHeight * scale)
+  } else if (currentPixels > SIZE_VALIDATION.MAX_TOTAL_PIXELS) {
+    // 缩小到最大像素
+    const scale = Math.sqrt(SIZE_VALIDATION.MAX_TOTAL_PIXELS / currentPixels)
+    newWidth = Math.round(newWidth * scale)
+    newHeight = Math.round(newHeight * scale)
+  }
+
+  // 确保边长在限制内
+  newWidth = Math.max(SIZE_VALIDATION.MIN_DIMENSION, Math.min(SIZE_VALIDATION.MAX_DIMENSION, newWidth))
+  newHeight = Math.max(SIZE_VALIDATION.MIN_DIMENSION, Math.min(SIZE_VALIDATION.MAX_DIMENSION, newHeight))
+
+  return { width: newWidth, height: newHeight }
+}
+
 // 分辨率对应的推荐像素尺寸映射表
 // 根据官方文档推荐的宽高像素值
 export const RESOLUTION_DIMENSIONS: Record<

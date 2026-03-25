@@ -30,5 +30,5 @@ npm run dev/build/lint/typecheck | 完成后必须lint+typecheck
 约束冲突/需求变更：先告知用户再执行
 
 ## 模型
-5.0-lite: doubao-seedream-5-0-lite-260128 | 4.5: doubao-seedream-4-5-251128 | 4.0: doubao-seedream-4-0-250828
+5.0-lite: doubao-seedream-5-0-lite-260128 | 4.5: doubao-seedream-4-5-251128 |(忽略4.0模型)
 记得使用两个技能，记得参考官方文档https://www.volcengine.com/docs/82379/1824121?lang=zh，https://www.volcengine.com/docs/82379/1541523?lang=zh

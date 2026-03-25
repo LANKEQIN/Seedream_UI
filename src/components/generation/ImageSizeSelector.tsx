@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo } from "react"
-import { Monitor, Square, RectangleHorizontal, RectangleVertical, Sparkles } from "lucide-react"
+import { Monitor, Square, RectangleHorizontal, RectangleVertical, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,11 @@ import {
   RESOLUTION_DIMENSIONS,
   ASPECT_RATIO_OPTIONS,
   getModelSupportedSizes,
+  validateImageSize,
+  getSuggestedValidSize,
+  SIZE_VALIDATION,
 } from "@/services/api"
+import type { SizeValidationResult } from "@/services/api"
 
 interface ImageSizeSelectorProps {
   value: ImageSizeConfig
@@ -45,6 +49,14 @@ export function ImageSizeSelector({
 
   // 获取当前模型支持的分辨率
   const supportedSizes = useMemo(() => getModelSupportedSizes(modelId), [modelId])
+
+  // 验证自定义尺寸（使用 useMemo 避免级联渲染）
+  const validation = useMemo<SizeValidationResult>(() => {
+    if (value.customWidth && value.customHeight) {
+      return validateImageSize(value.customWidth, value.customHeight)
+    }
+    return { isValid: true }
+  }, [value.customWidth, value.customHeight])
 
   // 处理分辨率变化
   const handleResolutionChange = useCallback(
@@ -197,31 +209,93 @@ export function ImageSizeSelector({
               <Label className="text-xs">宽度 (W)</Label>
               <Input
                 type="number"
-                placeholder="2048"
+                placeholder={`${SIZE_VALIDATION.MIN_DIMENSION}`}
                 value={value.customWidth || ""}
                 onChange={(e) => handleWidthChange(e.target.value)}
                 disabled={disabled}
-                className="h-9"
-                min={64}
-                max={8192}
+                className={cn(
+                  "h-9",
+                  !validation.isValid && "border-red-500 focus-visible:ring-red-500"
+                )}
+                min={SIZE_VALIDATION.MIN_DIMENSION}
+                max={SIZE_VALIDATION.MAX_DIMENSION}
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">高度 (H)</Label>
               <Input
                 type="number"
-                placeholder="2048"
+                placeholder={`${SIZE_VALIDATION.MIN_DIMENSION}`}
                 value={value.customHeight || ""}
                 onChange={(e) => handleHeightChange(e.target.value)}
                 disabled={disabled}
-                className="h-9"
-                min={64}
-                max={8192}
+                className={cn(
+                  "h-9",
+                  !validation.isValid && "border-red-500 focus-visible:ring-red-500"
+                )}
+                min={SIZE_VALIDATION.MIN_DIMENSION}
+                max={SIZE_VALIDATION.MAX_DIMENSION}
               />
             </div>
           </div>
+
+          {/* 验证结果提示 */}
+          {value.customWidth && value.customHeight && (
+            <div
+              className={cn(
+                "flex items-start gap-2 p-2 rounded-md text-xs",
+                validation.isValid
+                  ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                  : "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400"
+              )}
+            >
+              {validation.isValid ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                {validation.isValid ? (
+                  <span>
+                    有效尺寸 · 总像素: {validation.totalPixels?.toLocaleString()}
+                    {validation.warning && (
+                      <span className="text-amber-600 dark:text-amber-400 ml-1">
+                        ({validation.warning})
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span>{validation.error}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 无效时显示建议 */}
+          {!validation.isValid && value.customWidth && value.customHeight && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-8"
+              onClick={() => {
+                const suggested = getSuggestedValidSize(value.customWidth!, value.customHeight!)
+                onChange({
+                  ...value,
+                  customWidth: suggested.width,
+                  customHeight: suggested.height,
+                })
+              }}
+              disabled={disabled}
+            >
+              应用建议尺寸: {getSuggestedValidSize(value.customWidth || 2560, value.customHeight || 1440).width}x
+              {getSuggestedValidSize(value.customWidth || 2560, value.customHeight || 1440).height}
+            </Button>
+          )}
+
           <p className="text-[10px] text-muted-foreground">
-            总像素范围: 3,686,400 - 16,777,216 | 宽高比范围: 1/16 - 16
+            总像素范围: {SIZE_VALIDATION.MIN_TOTAL_PIXELS.toLocaleString()} - {SIZE_VALIDATION.MAX_TOTAL_PIXELS.toLocaleString()} | 
+            宽高比范围: 1:16 - 16:1
           </p>
         </div>
       )}
