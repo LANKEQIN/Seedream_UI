@@ -37,7 +37,7 @@ const FEATURES: FeatureCard[] = [
 ]
 
 interface FeatureCardsProps {
-  activeFeature: "image" | "video" | "agent"
+  activeFeature: "image" | "video"
   onFeatureSelect: (feature: "image" | "video") => void
 }
 

@@ -14,6 +14,10 @@ import {
   Palette,
   X,
   Wand2,
+  Key,
+  Eye,
+  EyeOff,
+  Check,
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { FeatureSelector, type FeatureType } from "@/components/generation/FeatureSelector"
+import { FeatureSelector, type FeatureType, type ModelId as SelectorModelId } from "@/components/generation/FeatureSelector"
+import { useSettingsStore, hasValidApiKey } from "@/stores/settings"
 import { ReferenceImageUpload } from "@/components/generation/ReferenceImageUpload"
 import { FeatureCards } from "@/components/generation/FeatureCards"
 import { ModelSelector } from "@/components/generation/ModelSelector"
@@ -42,7 +47,6 @@ import {
 import type {
   GenerationParams,
   GenerationTask,
-  ModelId,
   ImageFormat,
   ImageSizeConfig,
 } from "@/types"
@@ -56,8 +60,11 @@ const PROMPT_EXAMPLES = [
 ]
 
 export function HomePage() {
-  // 当前功能模式
-  const [featureMode, setFeatureMode] = useState<FeatureType>("agent")
+  // 当前功能模式 - 只保留图片和视频生成
+  const [featureMode, setFeatureMode] = useState<FeatureType>("image")
+
+  // 当前选择的模型
+  const [selectedModel, setSelectedModel] = useState<SelectorModelId>("doubao-seedream-5-0-lite-260128")
 
   // 参考图片
   const [referenceImage, setReferenceImage] = useState<string | null>(null)
@@ -73,29 +80,23 @@ export function HomePage() {
 
   // 设置对话框状态
   const [showSettings, setShowSettings] = useState(false)
+  // API Key 输入状态
+  const [showKeyInput, setShowKeyInput] = useState(false)
+  const [inputKey, setInputKey] = useState("")
+  const [saved, setSaved] = useState(false)
+
+  // 获取 settings store
+  const { apiKey, setApiKey, clearApiKey, useLocalApiKey } = useSettingsStore()
 
   // 处理功能模式切换
   const handleFeatureChange = useCallback((mode: FeatureType) => {
     setFeatureMode(mode)
   }, [])
 
-  // 处理功能卡片选择
-  const handleFeatureCardSelect = useCallback((feature: "image" | "video") => {
-    setFeatureMode(feature)
-  }, [])
-
-  // 处理参考图选择
-  const handleReferenceImageSelect = useCallback((imageUrl: string | null) => {
-    setReferenceImage(imageUrl)
-  }, [])
-
-  // 处理提示词变化
-  const handlePromptChange = useCallback((prompt: string) => {
-    setParams((prev) => ({ ...prev, prompt }))
-  }, [])
-
-  // 处理模型变化
-  const handleModelChange = useCallback((model: ModelId) => {
+  // 处理模型切换
+  const handleModelChange = useCallback((model: SelectorModelId) => {
+    setSelectedModel(model)
+    // 同步更新生成参数中的模型，并根据新模型支持的格式调整输出格式
     setParams((prev) => {
       const supportedFormats = getSupportedFormats(model)
       const isCurrentFormatSupported = supportedFormats.some(
@@ -106,6 +107,16 @@ export function HomePage() {
         : (supportedFormats[0]?.value as ImageFormat ?? "jpeg")
       return { ...prev, model, outputFormat: newFormat }
     })
+  }, [])
+
+  // 处理参考图选择
+  const handleReferenceImageSelect = useCallback((imageUrl: string | null) => {
+    setReferenceImage(imageUrl)
+  }, [])
+
+  // 处理提示词变化
+  const handlePromptChange = useCallback((prompt: string) => {
+    setParams((prev) => ({ ...prev, prompt }))
   }, [])
 
   // 处理尺寸配置变化
@@ -190,6 +201,33 @@ export function HomePage() {
 
   const canGenerate = params.prompt.trim().length > 0
   const isGenerating = currentTask?.status === "loading"
+  const hasKey = hasValidApiKey()
+  const isLocalKey = useLocalApiKey && apiKey
+
+  // 处理保存 API Key
+  const handleSaveKey = () => {
+    if (inputKey.trim()) {
+      setApiKey(inputKey.trim())
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
+  }
+
+  // 处理清除 API Key
+  const handleClearKey = () => {
+    clearApiKey()
+    setInputKey("")
+    setSaved(false)
+  }
+
+  // 处理对话框打开
+  const handleSettingsOpen = (open: boolean) => {
+    setShowSettings(open)
+    if (open) {
+      setInputKey(apiKey)
+      setSaved(false)
+    }
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-slate-50/80 via-white to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
@@ -282,10 +320,12 @@ export function HomePage() {
               <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50">
                 {/* 左侧：功能选择和其他选项 */}
                 <div className="flex items-center gap-2">
-                  {/* 功能选择下拉 */}
+                  {/* 功能选择下拉 - 集成模型选择 */}
                   <FeatureSelector
-                    value={featureMode}
-                    onChange={handleFeatureChange}
+                    feature={featureMode}
+                    model={selectedModel}
+                    onFeatureChange={handleFeatureChange}
+                    onModelChange={handleModelChange}
                   />
 
                   {/* 灵感搜索 */}
@@ -371,7 +411,7 @@ export function HomePage() {
         <div className="mb-12 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
           <FeatureCards
             activeFeature={featureMode}
-            onFeatureSelect={handleFeatureCardSelect}
+            onFeatureSelect={handleFeatureChange}
           />
         </div>
 
@@ -456,7 +496,7 @@ export function HomePage() {
       </footer>
 
       {/* 设置对话框 */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+      <Dialog open={showSettings} onOpenChange={handleSettingsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -465,6 +505,94 @@ export function HomePage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
+            {/* API Key 设置区域 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm font-medium">API Key</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isLocalKey ? (
+                    <span className="text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+                      已保存
+                    </span>
+                  ) : hasKey ? (
+                    <span className="text-xs text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                      环境变量
+                    </span>
+                  ) : (
+                    <span className="text-xs text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                      未设置
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showKeyInput ? "text" : "password"}
+                  placeholder="输入火山引擎 API Key"
+                  value={inputKey}
+                  onChange={(e) => setInputKey(e.target.value)}
+                  className="w-full h-9 px-3 pr-20 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKeyInput(!showKeyInput)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
+                >
+                  {showKeyInput ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-400">
+                API Key 用于访问火山引擎 Seedream 服务，
+                <a
+                  href="https://console.volcengine.com/ark/region:ark+cn-beijing/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-500 hover:underline"
+                >
+                  获取 API Key →
+                </a>
+              </p>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSaveKey}
+                  disabled={!inputKey.trim() || saved}
+                  size="sm"
+                  className="flex-1"
+                >
+                  {saved ? (
+                    <>
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                      已保存
+                    </>
+                  ) : (
+                    "保存"
+                  )}
+                </Button>
+                {isLocalKey && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearKey}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    清除
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
             <ModelSelector
               value={params.model}
               onChange={handleModelChange}
