@@ -38,6 +38,11 @@ export interface SizeValidationResult {
   // 计算值
   totalPixels?: number
   aspectRatio?: number
+  // 建议的有效尺寸
+  suggestedSize?: {
+    width: number
+    height: number
+  }
 }
 
 /**

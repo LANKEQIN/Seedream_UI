@@ -126,9 +126,12 @@ export function GenerationParamsPopover({
       }
     }
 
+    // 使用防抖优化滚动和resize事件
+    let scrollTimeout: number | null = null
     const handleScroll = () => {
       if (isOpen) {
-        updatePosition()
+        if (scrollTimeout) clearTimeout(scrollTimeout)
+        scrollTimeout = window.setTimeout(updatePosition, 16) // 约60fps
       }
     }
 
@@ -140,6 +143,7 @@ export function GenerationParamsPopover({
       document.removeEventListener("mousedown", handleClickOutside)
       window.removeEventListener("scroll", handleScroll, true)
       window.removeEventListener("resize", handleScroll)
+      if (scrollTimeout) clearTimeout(scrollTimeout)
     }
   }, [isOpen, updatePosition])
 
@@ -206,6 +210,7 @@ export function GenerationParamsPopover({
   }
 
   const handleToggle = () => {
+    if (disabled) return
     if (!isOpen) {
       updatePosition()
     }
@@ -383,8 +388,7 @@ export function GenerationParamsPopover({
                 disabled={disabled}
                 className="w-full text-[10px] px-2 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
               >
-                应用建议: {getSuggestedValidSize(sizeConfig.customWidth || 2560, sizeConfig.customHeight || 1440).width}x
-                {getSuggestedValidSize(sizeConfig.customWidth || 2560, sizeConfig.customHeight || 1440).height}
+                应用建议: {validation.suggestedSize?.width}x{validation.suggestedSize?.height}
               </button>
             )}
 
@@ -409,7 +413,8 @@ export function GenerationParamsPopover({
           onValueChange={(values) => {
             const newCount = values[0]
             onGenerationCountChange(newCount)
-            if (newCount > 1 && sequentialImageGeneration === "disabled") {
+            // 仅当数量从1变为大于1且当前是单图模式时才自动切换
+            if (generationCount === 1 && newCount > 1 && sequentialImageGeneration === "disabled") {
               onSequentialImageGenerationChange("auto")
             }
           }}
