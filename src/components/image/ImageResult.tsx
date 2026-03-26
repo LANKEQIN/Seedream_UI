@@ -1,13 +1,14 @@
 /**
  * 图片结果展示组件 - 仿官方体验中心排版
  * 上方显示提示词和参数信息，中间是图片网格展示
+ * 加载状态：根据生成数量显示对应数量的骨架屏动效
  */
 
 import { Download, RefreshCw, ImageIcon, Sparkles, Clock, Maximize2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import type { GeneratedImage, GenerationTask, ImageSizeConfig } from "@/types"
+import type { GeneratedImage, GenerationTask, ImageSizeConfig, GenerationParams } from "@/types"
 import { useState } from "react"
 
 interface ImageResultProps {
@@ -44,6 +45,33 @@ function formatModelName(model: string): string {
   return modelMap[model] || model
 }
 
+/**
+ * 获取网格列数类名
+ */
+function getGridColsClass(count: number): string {
+  if (count === 1) return "grid-cols-1"
+  if (count === 2) return "grid-cols-2"
+  if (count <= 4) return "grid-cols-2"
+  return "grid-cols-2 md:grid-cols-3"
+}
+
+/**
+ * 获取图片宽高比类名
+ */
+function getAspectRatioClass(params: GenerationParams): string {
+  const { aspectRatio } = params.sizeConfig
+  if (aspectRatio === "9:16" || aspectRatio === "3:4" || aspectRatio === "2:3") {
+    return "aspect-[3/4]"
+  }
+  if (aspectRatio === "16:9" || aspectRatio === "21:9") {
+    return "aspect-video"
+  }
+  if (aspectRatio === "4:3") {
+    return "aspect-[4/3]"
+  }
+  return "aspect-square"
+}
+
 export function ImageResult({ task, onRegenerate }: ImageResultProps) {
   const [copied, setCopied] = useState(false)
 
@@ -72,26 +100,58 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
     )
   }
 
-  // 加载状态
+  const params = task.params
+  const generationCount = params.generationCount || 1
+
+  // 加载状态 - 仿官方体验中心：显示多张骨架屏
   if (task.status === "loading") {
     return (
-      <div className="h-full min-h-[400px] flex items-center justify-center">
-        <div className="text-center space-y-6 py-12">
-          {/* 加载动画 */}
-          <div className="relative">
-            <div className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 animate-pulse" />
-            <div className="absolute inset-0 w-16 h-16 mx-auto rounded-xl border-2 border-indigo-500/30 animate-ping" />
+      <div className="space-y-4">
+        {/* 顶部信息栏 */}
+        <div className="space-y-3">
+          {/* 第一行：时间 */}
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Clock className="h-3.5 w-3.5" />
+            <span>
+              {new Date(task.createdAt).toLocaleString("zh-CN", {
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-base font-medium text-slate-700 dark:text-slate-300">
-              正在创作中...
-            </p>
-            <p className="text-sm text-slate-400">
-              AI 正在根据你的描述生成图片
-            </p>
+          {/* 第二行：提示词 */}
+          <h3 className="text-base font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+            {params.prompt}
+          </h3>
+
+          {/* 第三行：参数标签 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              {formatSize(params.sizeConfig)}
+            </Badge>
+            <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              {generationCount}张
+            </Badge>
+            <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
+              {formatModelName(params.model)}
+            </Badge>
+            {params.image && (Array.isArray(params.image) ? params.image.length > 0 : true) && (
+              <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                <ImageIcon className="h-3 w-3 mr-1" />
+                参考图
+              </Badge>
+            )}
           </div>
         </div>
+
+        <Separator className="bg-slate-100 dark:bg-slate-800" />
+
+        {/* 骨架屏网格 - 根据生成数量显示对应数量的占位符 */}
+        <SkeletonGrid count={generationCount} aspectRatioClass={getAspectRatioClass(params)} />
       </div>
     )
   }
@@ -130,7 +190,6 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
   // 成功状态 - 仿官方体验中心排版
   if (task.status === "success" && task.result) {
     const images = task.result.data
-    const params = task.params
 
     // 复制提示词
     const handleCopyPrompt = () => {
@@ -199,24 +258,17 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
 
           {/* 第三行：参数标签 */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 尺寸 */}
             <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200">
               {formatSize(params.sizeConfig)}
             </Badge>
-
-            {/* 数量 */}
             <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200">
-              {params.generationCount}张
+              {images.length}张
             </Badge>
-
-            {/* 模型 */}
             <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200">
               <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
               {formatModelName(params.model)}
             </Badge>
-
-            {/* 参考图标记 */}
-            {params.image && params.image.length > 0 && (
+            {params.image && (Array.isArray(params.image) ? params.image.length > 0 : true) && (
               <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200">
                 <ImageIcon className="h-3 w-3 mr-1" />
                 参考图
@@ -228,7 +280,7 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
         <Separator className="bg-slate-100 dark:bg-slate-800" />
 
         {/* 图片网格 - 仿官方风格 */}
-        <ImageGrid images={images} />
+        <ImageGrid images={images} params={params} />
       </div>
     )
   }
@@ -237,23 +289,73 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
 }
 
 /**
+ * 骨架屏网格组件 - 仿官方体验中心加载动效
+ * 显示多个带流光效果的占位卡片
+ */
+function SkeletonGrid({ count, aspectRatioClass }: { count: number; aspectRatioClass: string }) {
+  const gridClass = getGridColsClass(count)
+
+  return (
+    <div className={`grid ${gridClass} gap-3`}>
+      {Array.from({ length: count }).map((_, index) => (
+        <SkeletonCard key={index} index={index} aspectRatioClass={aspectRatioClass} />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * 单个骨架屏卡片 - 带流光渐变动效
+ */
+function SkeletonCard({ index, aspectRatioClass }: { index: number; aspectRatioClass: string }) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800
+        ${aspectRatioClass}
+      `}
+    >
+      {/* 流光渐变动效 */}
+      <div className="absolute inset-0 skeleton-shimmer" />
+
+      {/* 中央加载指示器 */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative">
+          {/* 外圈脉冲 */}
+          <div className="absolute inset-0 w-10 h-10 -m-1 rounded-full bg-indigo-500/20 animate-ping" />
+          {/* 内圈旋转 */}
+          <div className="w-8 h-8 border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 rounded-full animate-spin" />
+        </div>
+      </div>
+
+      {/* 序号标记 */}
+      {index > 0 && (
+        <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/30 text-white text-xs">
+          {index + 1}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
  * 图片网格组件 - 仿官方体验中心
  * 根据图片数量自动调整布局
  */
-function ImageGrid({ images }: { images: GeneratedImage[] }) {
-  // 根据图片数量决定列数
-  const getGridClass = () => {
-    const count = images.length
-    if (count === 1) return "grid-cols-1"
-    if (count === 2) return "grid-cols-2"
-    if (count <= 4) return "grid-cols-2"
-    return "grid-cols-2 md:grid-cols-3"
-  }
+function ImageGrid({ images, params }: { images: GeneratedImage[]; params: GenerationParams }) {
+  const gridClass = getGridColsClass(images.length)
+  const aspectRatioClass = getAspectRatioClass(params)
 
   return (
-    <div className={`grid ${getGridClass()} gap-3`}>
+    <div className={`grid ${gridClass} gap-3`}>
       {images.map((image, index) => (
-        <ImageItem key={index} image={image} index={index} total={images.length} />
+        <ImageItem
+          key={index}
+          image={image}
+          index={index}
+          total={images.length}
+          aspectRatioClass={aspectRatioClass}
+        />
       ))}
     </div>
   )
@@ -266,10 +368,12 @@ function ImageItem({
   image,
   index,
   total,
+  aspectRatioClass,
 }: {
   image: GeneratedImage
   index: number
   total: number
+  aspectRatioClass: string
 }) {
   const imageUrl = image.url || image.b64_json
   const [isLoaded, setIsLoaded] = useState(false)
@@ -287,15 +391,12 @@ function ImageItem({
     window.open(imageUrl, "_blank")
   }
 
-  // 判断是否是第一张且只有一张图（大图模式）
-  const isLarge = total === 1
-
   return (
     <div
       className={`
         relative overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800
         group cursor-pointer
-        ${isLarge ? "aspect-video" : "aspect-square"}
+        ${aspectRatioClass}
       `}
       onClick={handleOpen}
     >

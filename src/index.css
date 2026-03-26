@@ -361,3 +361,39 @@ body {
 .transition-bounce {
   transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
+
+/* 骨架屏流光动画 - 仿官方体验中心 */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.08) 25%,
+    rgba(139, 92, 246, 0.15) 50%,
+    rgba(99, 102, 241, 0.08) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.05) 25%,
+    rgba(139, 92, 246, 0.1) 50%,
+    rgba(99, 102, 241, 0.05) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
