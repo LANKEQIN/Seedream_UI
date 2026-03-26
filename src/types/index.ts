@@ -3,6 +3,9 @@
  * 参考文档: https://www.volcengine.com/docs/82379/1541523
  */
 
+// 功能类型
+export type FeatureType = "image"
+
 // 支持的模型
 export type ModelId =
   | "doubao-seedream-5-0-lite-260128"
