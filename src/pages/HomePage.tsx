@@ -30,7 +30,7 @@ import { FeatureSelector, type FeatureType } from "@/components/generation/Featu
 import { useSettingsStore, hasValidApiKey } from "@/stores/settings"
 import { useHistoryStore } from "@/stores/history"
 import { ReferenceImageUpload } from "@/components/generation/ReferenceImageUpload"
-import { FeatureCards } from "@/components/generation/FeatureCards"
+
 import { GenerationParamsPopover } from "@/components/generation/GenerationParamsPopover"
 import { ImageResult } from "@/components/image/ImageResult"
 import {
@@ -500,13 +500,7 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* 功能卡片区域 */}
-        <div className="mb-12 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-          <FeatureCards
-            activeFeature={featureMode}
-            onFeatureSelect={handleFeatureChange}
-          />
-        </div>
+
 
         {/* 生成结果展示区 */}
         {(currentTask || history.length > 0) && (
