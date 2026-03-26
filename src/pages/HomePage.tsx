@@ -10,8 +10,6 @@ import {
   Settings,
   History,
   Trash2,
-  Search,
-  Palette,
   X,
   Wand2,
   Key,
@@ -64,8 +62,8 @@ export function HomePage() {
   // 当前选择的模型
   const [selectedModel, setSelectedModel] = useState<ModelId>("doubao-seedream-5-0-lite-260128")
 
-  // 参考图片
-  const [referenceImage, setReferenceImage] = useState<string | null>(null)
+  // 参考图片（支持多图，最多14张）
+  const [referenceImages, setReferenceImages] = useState<string[]>([])
 
   // 组图生成模式
   const [sequentialImageGeneration, setSequentialImageGeneration] =
@@ -114,9 +112,9 @@ export function HomePage() {
     })
   }, [])
 
-  // 处理参考图选择
-  const handleReferenceImageSelect = useCallback((imageUrl: string | null) => {
-    setReferenceImage(imageUrl)
+  // 处理参考图选择（支持多图）
+  const handleReferenceImagesSelect = useCallback((imageUrls: string[]) => {
+    setReferenceImages(imageUrls)
   }, [])
 
   // 处理提示词变化
@@ -161,9 +159,10 @@ export function HomePage() {
     if (!params.prompt.trim()) return
 
     // 构建完整的生成参数，包含参考图片、组图模式和联网搜索
+    // 根据官方文档：image 参数支持单张或多张（最多14张）
     const fullParams = {
       ...params,
-      image: referenceImage || undefined,
+      image: referenceImages.length > 0 ? referenceImages : undefined,
       sequentialImageGeneration,
       webSearch,
     }
@@ -196,7 +195,7 @@ export function HomePage() {
       }
       setCurrentTask(failedTask)
     }
-  }, [params, referenceImage, sequentialImageGeneration, webSearch])
+  }, [params, referenceImages, sequentialImageGeneration, webSearch])
 
   // 重新生成
   const handleRegenerate = useCallback(() => {
@@ -328,8 +327,8 @@ export function HomePage() {
                   {/* 左侧参考图上传 */}
                   <div className="shrink-0 pt-1">
                     <ReferenceImageUpload
-                      imageUrl={referenceImage}
-                      onImageSelect={handleReferenceImageSelect}
+                      imageUrls={referenceImages}
+                      onImageSelect={handleReferenceImagesSelect}
                     />
                   </div>
 

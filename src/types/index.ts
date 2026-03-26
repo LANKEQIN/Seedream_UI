@@ -31,7 +31,10 @@ export interface ModelInfo {
 }
 
 // 分辨率类型
-export type Resolution = "2K" | "3K" | "4K"
+// 根据官方文档：
+// - 5.0-lite: 2K, 4K
+// - 4.5: 2K, 4K
+export type Resolution = "2K" | "4K"
 
 // 图片比例类型
 export type AspectRatio =

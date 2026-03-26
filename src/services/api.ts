@@ -206,17 +206,6 @@ export const RESOLUTION_DIMENSIONS: Record<
     "2:3": { width: 1664, height: 2496 },
     "21:9": { width: 3136, height: 1344 },
   },
-  "3K": {
-    // 3K 的推荐尺寸（基于 2K 比例放大）
-    "1:1": { width: 3072, height: 3072 },
-    "4:3": { width: 3456, height: 2592 },
-    "3:4": { width: 2592, height: 3456 },
-    "16:9": { width: 3648, height: 2048 },
-    "9:16": { width: 2048, height: 3648 },
-    "3:2": { width: 3744, height: 2496 },
-    "2:3": { width: 2496, height: 3744 },
-    "21:9": { width: 4032, height: 1728 },
-  },
   "4K": {
     "1:1": { width: 4096, height: 4096 },
     "3:4": { width: 3520, height: 4704 },
@@ -263,8 +252,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     },
     // 5.0 Lite 支持 png 和 jpeg
     supportedFormats: ["png", "jpeg"],
-    // 5.0 Lite 支持 2K 和 3K
-    supportedSizes: ["2K", "3K"],
+    // 根据官方文档，5.0-lite 支持 2K 和 4K
+    supportedSizes: ["2K", "4K"],
     // 最大生成数量：参考图数量 + 生成数量 ≤ 15
     maxGenerationCount: 15,
   },
