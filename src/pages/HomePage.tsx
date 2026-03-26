@@ -67,13 +67,6 @@ export function HomePage() {
   // 参考图片（支持多图，最多14张）
   const [referenceImages, setReferenceImages] = useState<string[]>([])
 
-  // 组图生成模式
-  const [sequentialImageGeneration, setSequentialImageGeneration] =
-    useState<SequentialImageGeneration>("disabled")
-
-  // 联网搜索
-  const [webSearch, setWebSearch] = useState(false)
-
   // 生成参数状态
   const [params, setParams] = useState<GenerationParams>(getDefaultParams())
 
@@ -133,11 +126,12 @@ export function HomePage() {
   // 处理生成数量变化
   // 根据官方文档：generationCount > 1 时必须启用组图模式
   const handleGenerationCountChange = useCallback((generationCount: number) => {
-    setParams((prev) => ({ ...prev, generationCount }))
-    // 当生成数量 > 1 时，自动切换到组图模式
-    if (generationCount > 1) {
-      setSequentialImageGeneration("auto")
-    }
+    setParams((prev) => ({ 
+      ...prev, 
+      generationCount,
+      // 当生成数量 > 1 时，自动切换到组图模式
+      sequentialImageGeneration: generationCount > 1 ? "auto" : prev.sequentialImageGeneration
+    }))
   }, [])
 
   // 处理格式变化
@@ -149,18 +143,19 @@ export function HomePage() {
   // 根据官方文档：单图模式只返回1张图片，组图模式才支持多张
   const handleSequentialImageGenerationChange = useCallback(
     (mode: SequentialImageGeneration) => {
-      setSequentialImageGeneration(mode)
-      // 切换到单图模式时，自动将生成数量设为1
-      if (mode === "disabled") {
-        setParams((prev) => ({ ...prev, generationCount: 1 }))
-      }
+      setParams((prev) => ({ 
+        ...prev, 
+        sequentialImageGeneration: mode,
+        // 切换到单图模式时，自动将生成数量设为1
+        generationCount: mode === "disabled" ? 1 : prev.generationCount
+      }))
     },
     []
   )
 
   // 处理联网搜索变化
   const handleWebSearchChange = useCallback((enabled: boolean) => {
-    setWebSearch(enabled)
+    setParams((prev) => ({ ...prev, webSearch: enabled }))
   }, [])
 
   // 处理生成
@@ -172,9 +167,9 @@ export function HomePage() {
     const fullParams = {
       ...params,
       image: referenceImages.length > 0 ? referenceImages : undefined,
-      sequentialImageGeneration,
-      webSearch,
     }
+
+    console.log("handleGenerate - 完整参数:", fullParams)
 
     const task: GenerationTask = {
       id: Date.now().toString(),
@@ -199,12 +194,16 @@ export function HomePage() {
           completedCount: 0,
         })
 
+        console.log("开始流式生成，参数:", fullParams)
+        
         // 使用流式API
         const result = await generateImageStream(fullParams, (image, index) => {
+          console.log("收到第", index + 1, "张图片:", image)
           // 每张图片生成时更新UI
           setCurrentTask((prev) => {
             if (!prev) return prev
             const newPartialImages = [...(prev.partialImages || []), image]
+            console.log("当前已收集图片:", newPartialImages.length)
             return {
               ...prev,
               partialImages: newPartialImages,
@@ -213,16 +212,23 @@ export function HomePage() {
           })
         })
 
+        console.log("流式生成完成，最终结果:", result)
+
         // 生成完成 - 保留 partialImages 以确保图片能正确显示
         setCurrentTask((prev) => {
+          const finalImages = [...(prev?.partialImages || []), ...result.data].filter(
+            (img, index, arr) => arr.findIndex(i => i.url === img.url && i.b64_json === img.b64_json) === index
+          )
+          console.log("最终要显示的图片:", finalImages)
+          
           const completedTask: GenerationTask = {
             ...task,
             status: "success",
-            result,
+            result: { ...result, data: finalImages },
             completedAt: Date.now(),
             // 保留流式过程中收集的图片
-            partialImages: prev?.partialImages || result.data,
-            completedCount: result.data.length,
+            partialImages: finalImages,
+            completedCount: finalImages.length,
           }
           addHistory(completedTask)
           return completedTask
@@ -258,7 +264,7 @@ export function HomePage() {
         setCurrentTask(failedTask)
       }
     }
-  }, [params, referenceImages, sequentialImageGeneration, webSearch, setCurrentTask, addHistory])
+  }, [params, referenceImages, setCurrentTask, addHistory])
 
   // 重新生成
   const handleRegenerate = useCallback(() => {
@@ -427,9 +433,9 @@ export function HomePage() {
                     onOutputFormatChange={handleFormatChange}
                     modelId={params.model}
                     disabled={isGenerating}
-                    sequentialImageGeneration={sequentialImageGeneration}
+                    sequentialImageGeneration={params.sequentialImageGeneration || "disabled"}
                     onSequentialImageGenerationChange={handleSequentialImageGenerationChange}
-                    webSearch={webSearch}
+                    webSearch={params.webSearch || false}
                     onWebSearchChange={handleWebSearchChange}
                   />
                 </div>

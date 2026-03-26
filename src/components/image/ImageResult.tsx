@@ -20,18 +20,18 @@ interface ImageResultProps {
  * 格式化尺寸显示
  */
 function formatSize(sizeConfig: ImageSizeConfig): string {
-  if (sizeConfig.preset === "custom" && sizeConfig.width && sizeConfig.height) {
-    return `${sizeConfig.width}×${sizeConfig.height}`
+  // 如果使用了自定义宽高，直接显示
+  if (sizeConfig.customWidth && sizeConfig.customHeight) {
+    return `${sizeConfig.customWidth}×${sizeConfig.customHeight}`
   }
-  const presetMap: Record<string, string> = {
-    "1:1": "1:1",
-    "4:3": "4:3",
-    "3:4": "3:4",
-    "16:9": "16:9",
-    "9:16": "9:16",
-    "custom": "自定义",
+  
+  // 智能比例模式
+  if (sizeConfig.aspectRatio === "auto") {
+    return `${sizeConfig.resolution} 智能比例`
   }
-  return presetMap[sizeConfig.preset] || sizeConfig.preset
+  
+  // 显示分辨率 + 比例
+  return `${sizeConfig.resolution} ${sizeConfig.aspectRatio}`
 }
 
 /**
@@ -256,7 +256,26 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
   // 成功状态 - 仿官方体验中心排版
   if (task.status === "success") {
     // 优先使用 result.data，如果没有则使用 partialImages（流式模式）
-    const images = task.result?.data || task.partialImages || []
+    // 合并并去重所有来源的图片
+    const resultImages = task.result?.data || []
+    const partialImages = task.partialImages || []
+    
+    // 合并并去重
+    const allImages = [...resultImages, ...partialImages].filter(
+      (img, index, arr) => {
+        const foundIndex = arr.findIndex(i => 
+          (i.url && i.url === img.url) || 
+          (i.b64_json && i.b64_json === img.b64_json)
+        )
+        return foundIndex === index
+      }
+    )
+    
+    console.log("ImageResult: 渲染成功状态")
+    console.log("  - result.data 图片数:", resultImages.length)
+    console.log("  - partialImages 图片数:", partialImages.length)
+    console.log("  - 合并去重后图片数:", allImages.length)
+    console.log("  - 所有图片:", allImages)
 
     // 复制提示词
     const handleCopyPrompt = () => {
@@ -329,7 +348,7 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
               {formatSize(params.sizeConfig)}
             </Badge>
             <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200">
-              {images.length}张
+              {allImages.length}张
             </Badge>
             <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200">
               <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
@@ -347,7 +366,7 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
         <Separator className="bg-slate-100 dark:bg-slate-800" />
 
         {/* 图片网格 - 仿官方风格 */}
-        <ImageGrid images={images} params={params} />
+        <ImageGrid images={allImages} params={params} />
       </div>
     )
   }

@@ -482,7 +482,10 @@ export async function generateImage(
     )
   }
 
-  return response.json()
+  const result = await response.json()
+  console.log("非流式生成完成，响应:", result)
+  console.log("返回的图片数量:", result.data?.length || 0)
+  return result
 }
 
 /**
@@ -537,47 +540,110 @@ export async function generateImageStream(
   let buffer = ""
   const allImages: GeneratedImage[] = []
   let currentIndex = 0
+  let chunkCount = 0
+
+  console.log("开始读取流式响应...")
 
   while (true) {
     const { done, value } = await reader.read()
-    if (done) break
+    if (done) {
+      console.log("流式响应读取完成")
+      break
+    }
 
-    buffer += decoder.decode(value, { stream: true })
+    chunkCount++
+    const decodedChunk = decoder.decode(value, { stream: true })
+    console.log(`收到第 ${chunkCount} 个数据块，长度: ${decodedChunk.length}`)
+    console.log(`数据块内容: "${decodedChunk}"`)
+
+    buffer += decodedChunk
     const lines = buffer.split("\n")
     buffer = lines.pop() || ""
 
-    for (const line of lines) {
+    console.log(`当前 buffer: "${buffer}"`)
+    console.log(`解析出 ${lines.length} 行`)
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      console.log(`处理第 ${i + 1} 行: "${line}"`)
+      
       if (line.startsWith("data: ")) {
         const data = line.slice(6).trim()
+        console.log(`  提取 data 部分: "${data}"`)
+        
         if (data === "[DONE]") {
+          console.log("  收到 [DONE] 信号")
           continue
         }
+        
         try {
           const parsed = JSON.parse(data)
-          // 处理流式响应格式 - 支持多种格式
-          // 格式1: { data: [{url: "..."}, {url: "..."}] } - 数组格式
-          if (parsed.data && Array.isArray(parsed.data)) {
-            for (const img of parsed.data) {
-              allImages.push(img)
-              onImageGenerated(img, currentIndex++)
-            }
-          }
-          // 格式2: { url: "..." } 或 { b64_json: "..." } - 单张图片格式
-          else if (parsed.url || parsed.b64_json) {
+          console.log("  解析后的JSON:", parsed)
+          
+          // 处理流式响应格式 - 根据官方文档的实际格式
+          // 格式: { type: "image_generation.partial_succeeded", image_index: 0, url: "..." }
+          if (parsed.type === "image_generation.partial_succeeded" && parsed.url) {
+            console.log("  检测到格式: image_generation.partial_succeeded")
             const img: GeneratedImage = {
               url: parsed.url,
               b64_json: parsed.b64_json,
               revised_prompt: parsed.revised_prompt,
             }
             allImages.push(img)
+            console.log(`  添加图片 ${currentIndex + 1} (index=${parsed.image_index}):`, img)
             onImageGenerated(img, currentIndex++)
           }
-        } catch {
-          // 忽略解析错误，继续等待下一个数据块
+          // 格式1: { data: [{url: "..."}, {url: "..."}] } - 数组格式 (备选)
+          else if (parsed.data && Array.isArray(parsed.data)) {
+            console.log("  检测到格式1: data数组")
+            for (const img of parsed.data) {
+              allImages.push(img)
+              console.log(`  添加图片 ${currentIndex + 1}:`, img)
+              onImageGenerated(img, currentIndex++)
+            }
+          }
+          // 格式2: { url: "..." } 或 { b64_json: "..." } - 单张图片格式 (备选)
+          else if (parsed.url || parsed.b64_json) {
+            console.log("  检测到格式2: 单张图片")
+            const img: GeneratedImage = {
+              url: parsed.url,
+              b64_json: parsed.b64_json,
+              revised_prompt: parsed.revised_prompt,
+            }
+            allImages.push(img)
+            console.log(`  添加图片 ${currentIndex + 1}:`, img)
+            onImageGenerated(img, currentIndex++)
+          }
+          // 格式3: 检查其他可能的结构，例如 choices 字段 (备选)
+          else if (parsed.choices && Array.isArray(parsed.choices)) {
+            console.log("  检测到格式3: choices数组")
+            for (const choice of parsed.choices) {
+              const img: GeneratedImage = {
+                url: choice.url,
+                b64_json: choice.b64_json,
+                revised_prompt: choice.revised_prompt,
+              }
+              allImages.push(img)
+              console.log(`  添加图片 ${currentIndex + 1}:`, img)
+              onImageGenerated(img, currentIndex++)
+            }
+          }
+          // image_generation.completed 只是完成信号，不包含图片
+          else if (parsed.type === "image_generation.completed") {
+            console.log("  收到完成信号，不包含图片数据")
+          }
+          else {
+            console.log("  未知格式，尝试查找任何可能的图片数据")
+            console.log("  完整对象键:", Object.keys(parsed))
+          }
+        } catch (e) {
+          console.error("解析流式响应失败:", e, "原始数据:", data)
         }
       }
     }
   }
+
+  console.log("流式生成完成，共获取图片:", allImages.length)
 
   return {
     created: Date.now(),
@@ -595,14 +661,51 @@ function buildRequestBody(params: GenerationParams): Record<string, unknown> {
   const validFormat = getValidOutputFormat(params.model, params.outputFormat)
   const supportsOutputFormat = params.model === "doubao-seedream-5-0-lite-260128"
 
+  // 判断是否为组图模式
+  const isGroupMode = params.sequentialImageGeneration === "auto"
+
+  // 优化提示词：组图模式下，强制添加明确的组图指令
+  let finalPrompt = params.prompt
+  if (isGroupMode && params.generationCount > 1) {
+    // 强制添加组图指令，确保模型理解需要生成多张图片
+    finalPrompt = `${params.prompt}。请生成${params.generationCount}张不同的图片，组成一组组图。`
+  }
+
+  // 基础请求体
   const requestBody: Record<string, unknown> = {
     model: params.model,
-    prompt: params.prompt,
+    prompt: finalPrompt,
     size: params.size,
     response_format: params.responseFormat,
     watermark: params.watermark,
-    n: params.generationCount,
   }
+
+  console.log("buildRequestBody - 调试信息:")
+  console.log("  - sequentialImageGeneration:", params.sequentialImageGeneration)
+  console.log("  - generationCount:", params.generationCount)
+  console.log("  - isGroupMode:", isGroupMode)
+  console.log("  - 原始提示词:", params.prompt)
+  console.log("  - 最终提示词:", finalPrompt)
+
+  // 根据官方文档：
+  // - 组图模式(auto)：使用 sequential_image_generation_options.max_images 控制数量，不使用 n 参数
+  // - 单图模式(disabled)：使用 n 参数控制数量
+  if (isGroupMode) {
+    // 组图模式：设置 sequential_image_generation 和 max_images
+    requestBody.sequential_image_generation = "auto"
+    requestBody.sequential_image_generation_options = {
+      max_images: params.generationCount
+    }
+    console.log("  - 设置为组图模式，max_images:", params.generationCount)
+  } else {
+    // 单图模式：使用 n 参数
+    requestBody.n = params.generationCount
+    // 显式设置 sequential_image_generation 为 disabled
+    requestBody.sequential_image_generation = "disabled"
+    console.log("  - 设置为单图模式，n:", params.generationCount)
+  }
+
+  console.log("  - 最终请求体:", JSON.stringify(requestBody, null, 2))
 
   if (supportsOutputFormat) {
     requestBody.output_format = validFormat
@@ -614,15 +717,6 @@ function buildRequestBody(params: GenerationParams): Record<string, unknown> {
 
   if (params.image) {
     requestBody.image = params.image
-  }
-
-  if (params.sequentialImageGeneration) {
-    requestBody.sequential_image_generation = params.sequentialImageGeneration
-    if (params.sequentialImageGeneration === "auto") {
-      requestBody.sequential_image_generation_options = {
-        max_images: params.generationCount
-      }
-    }
   }
 
   if (params.webSearch && params.model === "doubao-seedream-5-0-lite-260128") {
@@ -647,6 +741,10 @@ export function getDefaultParams(): GenerationParams {
     responseFormat: "url",
     watermark: false,
     generationCount: GENERATION_COUNT_OPTIONS.default,
+    // 默认设置为 disabled（单图模式）
+    sequentialImageGeneration: "disabled",
+    // 默认不开启联网搜索
+    webSearch: false,
   }
 }
 
