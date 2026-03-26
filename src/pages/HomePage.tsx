@@ -130,8 +130,13 @@ export function HomePage() {
   }, [])
 
   // 处理生成数量变化
+  // 根据官方文档：generationCount > 1 时必须启用组图模式
   const handleGenerationCountChange = useCallback((generationCount: number) => {
     setParams((prev) => ({ ...prev, generationCount }))
+    // 当生成数量 > 1 时，自动切换到组图模式
+    if (generationCount > 1) {
+      setSequentialImageGeneration("auto")
+    }
   }, [])
 
   // 处理格式变化
@@ -140,9 +145,14 @@ export function HomePage() {
   }, [])
 
   // 处理组图生成模式变化
+  // 根据官方文档：单图模式只返回1张图片，组图模式才支持多张
   const handleSequentialImageGenerationChange = useCallback(
     (mode: SequentialImageGeneration) => {
       setSequentialImageGeneration(mode)
+      // 切换到单图模式时，自动将生成数量设为1
+      if (mode === "disabled") {
+        setParams((prev) => ({ ...prev, generationCount: 1 }))
+      }
     },
     []
   )

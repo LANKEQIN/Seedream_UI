@@ -406,7 +406,13 @@ export function GenerationParamsPopover({
         </div>
         <Slider
           value={[generationCount]}
-          onValueChange={(values) => onGenerationCountChange(values[0])}
+          onValueChange={(values) => {
+            const newCount = values[0]
+            onGenerationCountChange(newCount)
+            if (newCount > 1 && sequentialImageGeneration === "disabled") {
+              onSequentialImageGenerationChange("auto")
+            }
+          }}
           min={GENERATION_COUNT_OPTIONS.min}
           max={GENERATION_COUNT_OPTIONS.max}
           step={1}
@@ -416,6 +422,11 @@ export function GenerationParamsPopover({
           <span>{GENERATION_COUNT_OPTIONS.min}张</span>
           <span>上限{GENERATION_COUNT_OPTIONS.max}张</span>
         </div>
+        {generationCount > 1 && (
+          <p className="text-[10px] text-amber-500">
+            ⚠️ 多图输出将自动启用组图模式
+          </p>
+        )}
       </div>
 
       {/* 输出格式 */}
@@ -450,36 +461,42 @@ export function GenerationParamsPopover({
           <button
             onClick={() => onSequentialImageGenerationChange("disabled")}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 text-xs rounded-lg border transition-all",
+              "flex flex-col items-start gap-1 px-3 py-2 text-xs rounded-lg border transition-all",
               sequentialImageGeneration === "disabled"
                 ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"
                 : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
             )}
           >
-            <FileImage className="h-3.5 w-3.5" />
-            <span>单图</span>
-            {sequentialImageGeneration === "disabled" && (
-              <Check className="h-3 w-3 ml-auto" />
-            )}
+            <div className="flex items-center gap-2 w-full">
+              <FileImage className="h-3.5 w-3.5" />
+              <span>单图模式</span>
+              {sequentialImageGeneration === "disabled" && (
+                <Check className="h-3 w-3 ml-auto" />
+              )}
+            </div>
+            <span className="text-[10px] text-slate-400">仅生成1张图片</span>
           </button>
           <button
             onClick={() => onSequentialImageGenerationChange("auto")}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 text-xs rounded-lg border transition-all",
+              "flex flex-col items-start gap-1 px-3 py-2 text-xs rounded-lg border transition-all",
               sequentialImageGeneration === "auto"
                 ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"
                 : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
             )}
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>组图</span>
-            {sequentialImageGeneration === "auto" && (
-              <Check className="h-3 w-3 ml-auto" />
-            )}
+            <div className="flex items-center gap-2 w-full">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>组图模式</span>
+              {sequentialImageGeneration === "auto" && (
+                <Check className="h-3 w-3 ml-auto" />
+              )}
+            </div>
+            <span className="text-[10px] text-slate-400">生成多张关联图片</span>
           </button>
         </div>
         <p className="text-[10px] text-slate-400">
-          组图模式：生成一组内容关联的图片
+          💡 多图输出需选择组图模式
         </p>
       </div>
 
