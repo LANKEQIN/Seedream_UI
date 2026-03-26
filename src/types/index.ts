@@ -108,7 +108,7 @@ export interface GenerationResponse {
 }
 
 // 生成状态
-export type GenerationStatus = "idle" | "loading" | "success" | "error"
+export type GenerationStatus = "idle" | "loading" | "streaming" | "success" | "error"
 
 // 生成任务
 export interface GenerationTask {
@@ -119,4 +119,8 @@ export interface GenerationTask {
   error?: string
   createdAt: number
   completedAt?: number
+  // 流式生成时已获取的图片
+  partialImages?: GeneratedImage[]
+  // 已完成的图片数量
+  completedCount?: number
 }

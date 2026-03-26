@@ -103,6 +103,72 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
   const params = task.params
   const generationCount = params.generationCount || 1
 
+  // 流式生成状态 - 显示已生成的图片，同时保留未完成图片的骨架屏
+  if (task.status === "streaming") {
+    const partialImages = task.partialImages || []
+    const completedCount = task.completedCount || 0
+
+    return (
+      <div className="space-y-4">
+        {/* 顶部信息栏 */}
+        <div className="space-y-3">
+          {/* 第一行：时间和进度 */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Clock className="h-3.5 w-3.5" />
+              <span>
+                {new Date(task.createdAt).toLocaleString("zh-CN", {
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs">
+              <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+              <span>生成中 {completedCount}/{generationCount}</span>
+            </div>
+          </div>
+
+          {/* 第二行：提示词 */}
+          <h3 className="text-base font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+            {params.prompt}
+          </h3>
+
+          {/* 第三行：参数标签 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              {formatSize(params.sizeConfig)}
+            </Badge>
+            <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              {generationCount}张
+            </Badge>
+            <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
+              {formatModelName(params.model)}
+            </Badge>
+            {params.image && (Array.isArray(params.image) ? params.image.length > 0 : true) && (
+              <Badge variant="secondary" className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                <ImageIcon className="h-3 w-3 mr-1" />
+                参考图
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <Separator className="bg-slate-100 dark:bg-slate-800" />
+
+        {/* 混合网格 - 已生成的图片 + 待生成的骨架屏 */}
+        <StreamingGrid
+          completedImages={partialImages}
+          totalCount={generationCount}
+          aspectRatioClass={getAspectRatioClass(params)}
+        />
+      </div>
+    )
+  }
+
   // 加载状态 - 仿官方体验中心：显示多张骨架屏
   if (task.status === "loading") {
     return (
@@ -188,8 +254,9 @@ export function ImageResult({ task, onRegenerate }: ImageResultProps) {
   }
 
   // 成功状态 - 仿官方体验中心排版
-  if (task.status === "success" && task.result) {
-    const images = task.result.data
+  if (task.status === "success") {
+    // 优先使用 result.data，如果没有则使用 partialImages（流式模式）
+    const images = task.result?.data || task.partialImages || []
 
     // 复制提示词
     const handleCopyPrompt = () => {
@@ -334,6 +401,46 @@ function SkeletonCard({ index, aspectRatioClass }: { index: number; aspectRatioC
           {index + 1}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * 流式生成网格组件 - 显示已生成的图片和待生成图片的骨架屏
+ */
+function StreamingGrid({
+  completedImages,
+  totalCount,
+  aspectRatioClass,
+}: {
+  completedImages: GeneratedImage[]
+  totalCount: number
+  aspectRatioClass: string
+}) {
+  const gridClass = getGridColsClass(totalCount)
+  const completedCount = completedImages.length
+  const remainingCount = totalCount - completedCount
+
+  return (
+    <div className={`grid ${gridClass} gap-3`}>
+      {/* 已完成的图片 */}
+      {completedImages.map((image, index) => (
+        <ImageItem
+          key={`completed-${index}`}
+          image={image}
+          index={index}
+          total={totalCount}
+          aspectRatioClass={aspectRatioClass}
+        />
+      ))}
+      {/* 待生成的骨架屏 */}
+      {Array.from({ length: remainingCount }).map((_, index) => (
+        <SkeletonCard
+          key={`pending-${index}`}
+          index={completedCount + index}
+          aspectRatioClass={aspectRatioClass}
+        />
+      ))}
     </div>
   )
 }

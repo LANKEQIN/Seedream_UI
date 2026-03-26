@@ -35,6 +35,7 @@ import { GenerationParamsPopover } from "@/components/generation/GenerationParam
 import { ImageResult } from "@/components/image/ImageResult"
 import {
   generateImage,
+  generateImageStream,
   getDefaultParams,
   getSupportedFormats,
   generateSizeString,
@@ -184,24 +185,78 @@ export function HomePage() {
 
     setCurrentTask(task)
 
-    try {
-      const result = await generateImage(fullParams)
-      const completedTask: GenerationTask = {
-        ...task,
-        status: "success",
-        result,
-        completedAt: Date.now(),
+    // 判断是否使用流式模式：多图生成时启用流式输出
+    const useStreaming = fullParams.generationCount > 1 && fullParams.sequentialImageGeneration === "auto"
+
+    if (useStreaming) {
+      // 流式模式：多图生成时逐张显示
+      try {
+        // 先切换到 streaming 状态显示骨架屏
+        setCurrentTask({
+          ...task,
+          status: "streaming",
+          partialImages: [],
+          completedCount: 0,
+        })
+
+        // 使用流式API
+        const result = await generateImageStream(fullParams, (image, index) => {
+          // 每张图片生成时更新UI
+          setCurrentTask((prev) => {
+            if (!prev) return prev
+            const newPartialImages = [...(prev.partialImages || []), image]
+            return {
+              ...prev,
+              partialImages: newPartialImages,
+              completedCount: index + 1,
+            }
+          })
+        })
+
+        // 生成完成 - 保留 partialImages 以确保图片能正确显示
+        setCurrentTask((prev) => {
+          const completedTask: GenerationTask = {
+            ...task,
+            status: "success",
+            result,
+            completedAt: Date.now(),
+            // 保留流式过程中收集的图片
+            partialImages: prev?.partialImages || result.data,
+            completedCount: result.data.length,
+          }
+          addHistory(completedTask)
+          return completedTask
+        })
+      } catch (error) {
+        const failedTask: GenerationTask = {
+          ...task,
+          status: "error",
+          error: error instanceof Error ? error.message : "生成失败",
+          completedAt: Date.now(),
+        }
+        setCurrentTask(failedTask)
       }
-      setCurrentTask(completedTask)
-      addHistory(completedTask)
-    } catch (error) {
-      const failedTask: GenerationTask = {
-        ...task,
-        status: "error",
-        error: error instanceof Error ? error.message : "生成失败",
-        completedAt: Date.now(),
+    } else {
+      // 非流式模式：单图或普通模式
+      try {
+        const result = await generateImage(fullParams)
+        const completedTask: GenerationTask = {
+          ...task,
+          status: "success",
+          result,
+          completedAt: Date.now(),
+        }
+        setCurrentTask(completedTask)
+        addHistory(completedTask)
+      } catch (error) {
+        const failedTask: GenerationTask = {
+          ...task,
+          status: "error",
+          error: error instanceof Error ? error.message : "生成失败",
+          completedAt: Date.now(),
+        }
+        setCurrentTask(failedTask)
       }
-      setCurrentTask(failedTask)
     }
   }, [params, referenceImages, sequentialImageGeneration, webSearch, setCurrentTask, addHistory])
 
@@ -230,7 +285,7 @@ export function HomePage() {
   }, [])
 
   const canGenerate = params.prompt.trim().length > 0
-  const isGenerating = currentTask?.status === "loading"
+  const isGenerating = currentTask?.status === "loading" || currentTask?.status === "streaming"
   const hasKey = hasValidApiKey()
   const isLocalKey = useLocalApiKey && apiKey
 

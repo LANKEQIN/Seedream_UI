@@ -13,6 +13,7 @@ import type {
   ImageSizeConfig,
   Resolution,
   AspectRatio,
+  GeneratedImage,
 } from "@/types"
 import { getEffectiveApiKey } from "@/stores/settings"
 
@@ -443,7 +444,7 @@ export function validateGenerationConstraints(params: GenerationParams): {
 }
 
 /**
- * 生成图片
+ * 生成图片 - 非流式版本
  * @param params 生成参数
  * @returns 生成结果
  */
@@ -462,51 +463,8 @@ export async function generateImage(
     throw new Error(validation.error)
   }
 
-  // 根据模型自动适配输出格式
-  // 注意：根据官方文档和实际测试，只有 5.0 Lite 支持 output_format 参数
-  // 4.5/4.0 模型发送此参数会导致报错
-  const validFormat = getValidOutputFormat(params.model, params.outputFormat)
-  const supportsOutputFormat = params.model === "doubao-seedream-5-0-lite-260128"
-
   // 构建请求体
-  // 参考文档: https://www.volcengine.com/docs/82379/1541523
-  const requestBody: Record<string, unknown> = {
-    model: params.model,
-    prompt: params.prompt,
-    size: params.size,
-    response_format: params.responseFormat,
-    watermark: params.watermark,
-    // 生成数量（1-15，参考图数量 + 生成数量 ≤ 15）
-    n: params.generationCount,
-  }
-
-  // 只有 5.0 Lite 模型添加 output_format 参数
-  if (supportsOutputFormat) {
-    requestBody.output_format = validFormat
-  }
-
-  // 添加可选参数：负面提示词
-  if (params.negativePrompt) {
-    requestBody.negative_prompt = params.negativePrompt
-  }
-
-  // 添加参考图片参数
-  // 官方文档：支持 URL 或 Base64 编码，最多14张
-  if (params.image) {
-    requestBody.image = params.image
-  }
-
-  // 组图生成模式
-  // 官方文档：auto 启用组图生成，disabled 单图生成
-  if (params.sequentialImageGeneration) {
-    requestBody.sequential_image_generation = params.sequentialImageGeneration
-  }
-
-  // 联网搜索（仅 5.0-lite 支持）
-  // 官方文档：5.0-lite 支持联网搜索功能
-  if (params.webSearch && params.model === "doubao-seedream-5-0-lite-260128") {
-    requestBody.web_search = true
-  }
+  const requestBody = buildRequestBody(params)
 
   const response = await fetch(`${API_BASE_URL}/images/generations`, {
     method: "POST",
@@ -525,6 +483,153 @@ export async function generateImage(
   }
 
   return response.json()
+}
+
+/**
+ * 流式生成图片 - 逐张获取生成的图片
+ * @param params 生成参数
+ * @param onImageGenerated 每张图片生成时的回调
+ * @returns 最终生成结果
+ */
+export async function generateImageStream(
+  params: GenerationParams,
+  onImageGenerated: (image: GeneratedImage, index: number) => void
+): Promise<GenerationResponse> {
+  const apiKey = getEffectiveApiKey()
+
+  if (!apiKey) {
+    throw new Error("未设置 API Key，请点击右上角设置按钮进行配置")
+  }
+
+  // 验证约束条件
+  const validation = validateGenerationConstraints(params)
+  if (!validation.isValid) {
+    throw new Error(validation.error)
+  }
+
+  // 构建请求体，启用流式输出
+  const requestBody = buildRequestBody(params)
+  requestBody.stream = true
+
+  const response = await fetch(`${API_BASE_URL}/images/generations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(
+      errorData.error?.message || `请求失败: ${response.status}`
+    )
+  }
+
+  // 处理流式响应 (SSE格式)
+  const reader = response.body?.getReader()
+  if (!reader) {
+    throw new Error("无法读取响应流")
+  }
+
+  const decoder = new TextDecoder()
+  let buffer = ""
+  const allImages: GeneratedImage[] = []
+  let currentIndex = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() || ""
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const data = line.slice(6).trim()
+        if (data === "[DONE]") {
+          continue
+        }
+        try {
+          const parsed = JSON.parse(data)
+          // 处理流式响应格式 - 支持多种格式
+          // 格式1: { data: [{url: "..."}, {url: "..."}] } - 数组格式
+          if (parsed.data && Array.isArray(parsed.data)) {
+            for (const img of parsed.data) {
+              allImages.push(img)
+              onImageGenerated(img, currentIndex++)
+            }
+          }
+          // 格式2: { url: "..." } 或 { b64_json: "..." } - 单张图片格式
+          else if (parsed.url || parsed.b64_json) {
+            const img: GeneratedImage = {
+              url: parsed.url,
+              b64_json: parsed.b64_json,
+              revised_prompt: parsed.revised_prompt,
+            }
+            allImages.push(img)
+            onImageGenerated(img, currentIndex++)
+          }
+        } catch {
+          // 忽略解析错误，继续等待下一个数据块
+        }
+      }
+    }
+  }
+
+  return {
+    created: Date.now(),
+    data: allImages,
+  }
+}
+
+/**
+ * 构建请求体
+ * @param params 生成参数
+ * @returns 请求体对象
+ */
+function buildRequestBody(params: GenerationParams): Record<string, unknown> {
+  // 根据模型自动适配输出格式
+  const validFormat = getValidOutputFormat(params.model, params.outputFormat)
+  const supportsOutputFormat = params.model === "doubao-seedream-5-0-lite-260128"
+
+  const requestBody: Record<string, unknown> = {
+    model: params.model,
+    prompt: params.prompt,
+    size: params.size,
+    response_format: params.responseFormat,
+    watermark: params.watermark,
+    n: params.generationCount,
+  }
+
+  if (supportsOutputFormat) {
+    requestBody.output_format = validFormat
+  }
+
+  if (params.negativePrompt) {
+    requestBody.negative_prompt = params.negativePrompt
+  }
+
+  if (params.image) {
+    requestBody.image = params.image
+  }
+
+  if (params.sequentialImageGeneration) {
+    requestBody.sequential_image_generation = params.sequentialImageGeneration
+    if (params.sequentialImageGeneration === "auto") {
+      requestBody.sequential_image_generation_options = {
+        max_images: params.generationCount
+      }
+    }
+  }
+
+  if (params.webSearch && params.model === "doubao-seedream-5-0-lite-260128") {
+    requestBody.web_search = true
+  }
+
+  return requestBody
 }
 
 /**

@@ -12,8 +12,8 @@ interface HistoryState {
   currentTask: GenerationTask | null
   // 历史记录列表
   history: GenerationTask[]
-  // 设置当前任务
-  setCurrentTask: (task: GenerationTask | null) => void
+  // 设置当前任务（支持函数式更新）
+  setCurrentTask: (task: GenerationTask | null | ((prev: GenerationTask | null) => GenerationTask | null)) => void
   // 添加历史记录
   addHistory: (task: GenerationTask) => void
   // 删除历史记录
@@ -32,7 +32,13 @@ export const useHistoryStore = create<HistoryState>()(
     (set) => ({
       currentTask: null,
       history: [],
-      setCurrentTask: (task) => set({ currentTask: task }),
+      setCurrentTask: (task) =>
+        set((state) => ({
+          currentTask:
+            typeof task === "function"
+              ? (task as (prev: GenerationTask | null) => GenerationTask | null)(state.currentTask)
+              : task,
+        })),
       addHistory: (task) =>
         set((state) => {
           // 将新任务添加到历史记录开头，并限制最大数量
