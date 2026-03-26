@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { FeatureSelector, type FeatureType } from "@/components/generation/FeatureSelector"
 import { useSettingsStore, hasValidApiKey } from "@/stores/settings"
+import { useHistoryStore } from "@/stores/history"
 import { ReferenceImageUpload } from "@/components/generation/ReferenceImageUpload"
 import { FeatureCards } from "@/components/generation/FeatureCards"
 import { GenerationParamsPopover } from "@/components/generation/GenerationParamsPopover"
@@ -75,11 +76,8 @@ export function HomePage() {
   // 生成参数状态
   const [params, setParams] = useState<GenerationParams>(getDefaultParams())
 
-  // 当前任务状态
-  const [currentTask, setCurrentTask] = useState<GenerationTask | null>(null)
-
-  // 历史记录
-  const [history, setHistory] = useState<GenerationTask[]>([])
+  // 从持久化存储获取当前任务和历史记录
+  const { currentTask, history, setCurrentTask, addHistory, deleteHistory } = useHistoryStore()
 
   // 设置对话框状态
   const [showSettings, setShowSettings] = useState(false)
@@ -185,7 +183,7 @@ export function HomePage() {
         completedAt: Date.now(),
       }
       setCurrentTask(completedTask)
-      setHistory((prev) => [completedTask, ...prev])
+      addHistory(completedTask)
     } catch (error) {
       const failedTask: GenerationTask = {
         ...task,
@@ -195,7 +193,7 @@ export function HomePage() {
       }
       setCurrentTask(failedTask)
     }
-  }, [params, referenceImages, sequentialImageGeneration, webSearch])
+  }, [params, referenceImages, sequentialImageGeneration, webSearch, setCurrentTask, addHistory])
 
   // 重新生成
   const handleRegenerate = useCallback(() => {
@@ -208,11 +206,8 @@ export function HomePage() {
   // 删除历史记录
   const handleDeleteHistory = useCallback((taskId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setHistory((prev) => prev.filter((task) => task.id !== taskId))
-    if (currentTask?.id === taskId) {
-      setCurrentTask(null)
-    }
-  }, [currentTask])
+    deleteHistory(taskId)
+  }, [deleteHistory])
 
   // 处理示例点击
   const handleExampleClick = useCallback((example: string) => {
