@@ -47,9 +47,7 @@ export function FeatureCards({ activeFeature, onFeatureSelect }: FeatureCardsPro
       <div className="grid grid-cols-2 gap-4">
         {FEATURES.map((feature) => {
           const Icon = feature.icon
-          const isActive =
-            (feature.id === "image" && activeFeature === "image") ||
-            (feature.id === "video" && activeFeature === "video")
+          const isActive = feature.id === activeFeature
 
           return (
             <button
