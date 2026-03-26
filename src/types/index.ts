@@ -62,6 +62,12 @@ export type ImageFormat = "png" | "jpeg" | "webp"
 // 响应格式
 export type ResponseFormat = "url" | "b64_json"
 
+// 参考图片类型（支持 URL 或 Base64）
+export type ImageInput = string
+
+// 组图生成模式
+export type SequentialImageGeneration = "auto" | "disabled"
+
 // 生成参数
 export interface GenerationParams {
   model: ModelId
@@ -76,6 +82,13 @@ export interface GenerationParams {
   // 生成数量（1-15，参考图数量 + 生成数量 ≤ 15）
   generationCount: number
   negativePrompt?: string
+  // 参考图片（支持单张或多张，最多14张）
+  // 支持 URL 或 Base64 编码格式
+  image?: ImageInput | ImageInput[]
+  // 组图生成模式：auto 启用组图生成，disabled 单图生成
+  sequentialImageGeneration?: SequentialImageGeneration
+  // 联网搜索（仅 5.0-lite 支持）
+  webSearch?: boolean
 }
 
 // 生成的图片

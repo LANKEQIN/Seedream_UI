@@ -25,7 +25,7 @@ import {
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import type { ImageSizeConfig, Resolution, AspectRatio, ImageFormat, ModelId } from "@/types"
+import type { ImageSizeConfig, Resolution, AspectRatio, ImageFormat, ModelId, SequentialImageGeneration } from "@/types"
 import {
   RESOLUTION_DIMENSIONS,
   ASPECT_RATIO_OPTIONS,
@@ -58,6 +58,12 @@ interface GenerationParamsPopoverProps {
   onOutputFormatChange: (format: ImageFormat) => void
   modelId: ModelId
   disabled?: boolean
+  // 组图生成模式
+  sequentialImageGeneration: SequentialImageGeneration
+  onSequentialImageGenerationChange: (mode: SequentialImageGeneration) => void
+  // 联网搜索
+  webSearch: boolean
+  onWebSearchChange: (enabled: boolean) => void
 }
 
 export function GenerationParamsPopover({
@@ -69,6 +75,10 @@ export function GenerationParamsPopover({
   onOutputFormatChange,
   modelId,
   disabled = false,
+  sequentialImageGeneration,
+  onSequentialImageGenerationChange,
+  webSearch,
+  onWebSearchChange,
 }: GenerationParamsPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
@@ -409,7 +419,7 @@ export function GenerationParamsPopover({
       </div>
 
       {/* 输出格式 */}
-      <div className="space-y-2">
+      <div className="space-y-2 mb-4">
         <span className="text-xs text-slate-500 dark:text-slate-400">输出格式</span>
         <div className="grid grid-cols-2 gap-2">
           {supportedFormats.map((format) => (
@@ -432,6 +442,79 @@ export function GenerationParamsPopover({
           ))}
         </div>
       </div>
+
+      {/* 组图生成模式 */}
+      <div className="space-y-2 mb-4">
+        <span className="text-xs text-slate-500 dark:text-slate-400">生成模式</span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => onSequentialImageGenerationChange("disabled")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 text-xs rounded-lg border transition-all",
+              sequentialImageGeneration === "disabled"
+                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"
+                : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+            )}
+          >
+            <FileImage className="h-3.5 w-3.5" />
+            <span>单图</span>
+            {sequentialImageGeneration === "disabled" && (
+              <Check className="h-3 w-3 ml-auto" />
+            )}
+          </button>
+          <button
+            onClick={() => onSequentialImageGenerationChange("auto")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 text-xs rounded-lg border transition-all",
+              sequentialImageGeneration === "auto"
+                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"
+                : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+            )}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>组图</span>
+            {sequentialImageGeneration === "auto" && (
+              <Check className="h-3 w-3 ml-auto" />
+            )}
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-400">
+          组图模式：生成一组内容关联的图片
+        </p>
+      </div>
+
+      {/* 联网搜索（仅 5.0-lite 支持） */}
+      {modelId === "doubao-seedream-5-0-lite-260128" && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">联网搜索</span>
+              <span className="text-[10px] text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded">
+                5.0-lite
+              </span>
+            </div>
+            <button
+              onClick={() => onWebSearchChange(!webSearch)}
+              className={cn(
+                "relative w-10 h-5 rounded-full transition-colors duration-200",
+                webSearch
+                  ? "bg-indigo-500"
+                  : "bg-slate-200 dark:bg-slate-700"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200",
+                  webSearch && "translate-x-5"
+                )}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400">
+            启用后可融合实时网络信息，提升生图时效性
+          </p>
+        </div>
+      )}
     </div>
   )
 

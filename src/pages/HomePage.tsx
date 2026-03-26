@@ -46,6 +46,7 @@ import type {
   ImageFormat,
   ImageSizeConfig,
   ModelId,
+  SequentialImageGeneration,
 } from "@/types"
 
 // 提示词示例
@@ -65,6 +66,13 @@ export function HomePage() {
 
   // 参考图片
   const [referenceImage, setReferenceImage] = useState<string | null>(null)
+
+  // 组图生成模式
+  const [sequentialImageGeneration, setSequentialImageGeneration] =
+    useState<SequentialImageGeneration>("disabled")
+
+  // 联网搜索
+  const [webSearch, setWebSearch] = useState(false)
 
   // 生成参数状态
   const [params, setParams] = useState<GenerationParams>(getDefaultParams())
@@ -135,21 +143,42 @@ export function HomePage() {
     setParams((prev) => ({ ...prev, outputFormat }))
   }, [])
 
+  // 处理组图生成模式变化
+  const handleSequentialImageGenerationChange = useCallback(
+    (mode: SequentialImageGeneration) => {
+      setSequentialImageGeneration(mode)
+    },
+    []
+  )
+
+  // 处理联网搜索变化
+  const handleWebSearchChange = useCallback((enabled: boolean) => {
+    setWebSearch(enabled)
+  }, [])
+
   // 处理生成
   const handleGenerate = useCallback(async () => {
     if (!params.prompt.trim()) return
 
+    // 构建完整的生成参数，包含参考图片、组图模式和联网搜索
+    const fullParams = {
+      ...params,
+      image: referenceImage || undefined,
+      sequentialImageGeneration,
+      webSearch,
+    }
+
     const task: GenerationTask = {
       id: Date.now().toString(),
       status: "loading",
-      params: { ...params },
+      params: fullParams,
       createdAt: Date.now(),
     }
 
     setCurrentTask(task)
 
     try {
-      const result = await generateImage(params)
+      const result = await generateImage(fullParams)
       const completedTask: GenerationTask = {
         ...task,
         status: "success",
@@ -167,7 +196,7 @@ export function HomePage() {
       }
       setCurrentTask(failedTask)
     }
-  }, [params])
+  }, [params, referenceImage, sequentialImageGeneration, webSearch])
 
   // 重新生成
   const handleRegenerate = useCallback(() => {
@@ -271,11 +300,15 @@ export function HomePage() {
         {/* 标题区 */}
         <div className="text-center mb-10 space-y-3">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">
-            开启你的{" "}
+            浮生如
             <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-              Agent 模式
+              梦
             </span>
-            ，即刻造梦！
+            ，即刻造
+            <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
+              梦
+            </span>
+            
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             输入描述，让 AI 为你创造无限可能
@@ -335,25 +368,11 @@ export function HomePage() {
                     onOutputFormatChange={handleFormatChange}
                     modelId={params.model}
                     disabled={isGenerating}
+                    sequentialImageGeneration={sequentialImageGeneration}
+                    onSequentialImageGenerationChange={handleSequentialImageGenerationChange}
+                    webSearch={webSearch}
+                    onWebSearchChange={handleWebSearchChange}
                   />
-
-                  {/* 灵感搜索 */}
-                  <Badge
-                    variant="secondary"
-                    className="h-7 text-xs font-normal bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer rounded-full px-3"
-                  >
-                    <Search className="h-3 w-3 mr-1" />
-                    灵感搜索
-                  </Badge>
-
-                  {/* 创意设计 */}
-                  <Badge
-                    variant="secondary"
-                    className="h-7 text-xs font-normal bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer rounded-full px-3"
-                  >
-                    <Palette className="h-3 w-3 mr-1" />
-                    创意设计
-                  </Badge>
                 </div>
 
                 {/* 右侧：清空和生成 */}

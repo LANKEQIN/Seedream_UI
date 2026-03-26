@@ -402,6 +402,58 @@ function getValidOutputFormat(
 }
 
 /**
+ * 计算参考图片数量
+ * @param image 参考图片参数
+ * @returns 参考图片数量
+ */
+function getReferenceImageCount(image?: string | string[]): number {
+  if (!image) return 0
+  return Array.isArray(image) ? image.length : 1
+}
+
+/**
+ * 验证生成参数约束
+ * 根据官方文档：输入的参考图数量 + 最终生成的图片数量 ≤ 15张
+ * @param params 生成参数
+ * @returns 验证结果
+ */
+export function validateGenerationConstraints(params: GenerationParams): {
+  isValid: boolean
+  error?: string
+  referenceImageCount: number
+  maxAllowedGeneration: number
+} {
+  const referenceImageCount = getReferenceImageCount(params.image)
+  const maxAllowedGeneration = 15 - referenceImageCount
+
+  // 检查参考图数量（最多14张）
+  if (referenceImageCount > 14) {
+    return {
+      isValid: false,
+      error: "参考图片数量不能超过14张",
+      referenceImageCount,
+      maxAllowedGeneration: 0,
+    }
+  }
+
+  // 检查生成数量约束
+  if (params.generationCount > maxAllowedGeneration) {
+    return {
+      isValid: false,
+      error: `已上传 ${referenceImageCount} 张参考图，最多可生成 ${maxAllowedGeneration} 张图片`,
+      referenceImageCount,
+      maxAllowedGeneration,
+    }
+  }
+
+  return {
+    isValid: true,
+    referenceImageCount,
+    maxAllowedGeneration,
+  }
+}
+
+/**
  * 生成图片
  * @param params 生成参数
  * @returns 生成结果
@@ -413,6 +465,12 @@ export async function generateImage(
 
   if (!apiKey) {
     throw new Error("未设置 API Key，请点击右上角设置按钮进行配置")
+  }
+
+  // 验证约束条件
+  const validation = validateGenerationConstraints(params)
+  if (!validation.isValid) {
+    throw new Error(validation.error)
   }
 
   // 根据模型自动适配输出格式
@@ -438,9 +496,27 @@ export async function generateImage(
     requestBody.output_format = validFormat
   }
 
-  // 添加可选参数
+  // 添加可选参数：负面提示词
   if (params.negativePrompt) {
     requestBody.negative_prompt = params.negativePrompt
+  }
+
+  // 添加参考图片参数
+  // 官方文档：支持 URL 或 Base64 编码，最多14张
+  if (params.image) {
+    requestBody.image = params.image
+  }
+
+  // 组图生成模式
+  // 官方文档：auto 启用组图生成，disabled 单图生成
+  if (params.sequentialImageGeneration) {
+    requestBody.sequential_image_generation = params.sequentialImageGeneration
+  }
+
+  // 联网搜索（仅 5.0-lite 支持）
+  // 官方文档：5.0-lite 支持联网搜索功能
+  if (params.webSearch && params.model === "doubao-seedream-5-0-lite-260128") {
+    requestBody.web_search = true
   }
 
   const response = await fetch(`${API_BASE_URL}/images/generations`, {
