@@ -31,6 +31,7 @@ import {
   ASPECT_RATIO_OPTIONS,
   getModelSupportedSizes,
   getSupportedFormats,
+  getModelCapabilityNote,
   GENERATION_COUNT_OPTIONS,
   validateImageSize,
   getSuggestedValidSize,
@@ -94,6 +95,8 @@ export function GenerationParamsPopover({
   const supportedFormats = getSupportedFormats(modelId)
   // 5.0-pro 暂不支持组图生成（文生组图/单多图生组图），仅 5.0-lite 支持
   const isGroupModeSupported = modelId === "doubao-seedream-5-0-lite-260128"
+  // 当前模型的完整能力说明（含标注日期）
+  const capabilityNote = getModelCapabilityNote(modelId)
 
   // 验证自定义尺寸（使用 useMemo 避免级联渲染）
   const validation = useMemo<SizeValidationResult>(() => {
@@ -542,6 +545,79 @@ export function GenerationParamsPopover({
           <p className="text-[10px] text-slate-400">
             启用后可融合实时网络信息，提升生图时效性
           </p>
+        </div>
+      )}
+
+      {/* 模型能力说明 */}
+      {capabilityNote && (
+        <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              模型能力说明
+            </span>
+            <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+              更新于 {capabilityNote.updatedAt}
+            </span>
+          </div>
+
+          {/* 支持能力 */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px] text-green-600 dark:text-green-400">
+              <CheckCircle2 className="h-3 w-3" />
+              <span>支持</span>
+            </div>
+            <ul className="space-y-1 pl-4">
+              {capabilityNote.supports.map((item, idx) => (
+                <li
+                  key={`s-${idx}`}
+                  className="flex items-start gap-1.5 text-[10px] text-slate-600 dark:text-slate-400"
+                >
+                  <span className="text-green-500 mt-px">✓</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 暂不支持能力 */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px] text-red-500 dark:text-red-400">
+              <AlertCircle className="h-3 w-3" />
+              <span>暂不支持</span>
+            </div>
+            <ul className="space-y-1 pl-4">
+              {capabilityNote.unsupported.map((item, idx) => (
+                <li
+                  key={`u-${idx}`}
+                  className="flex items-start gap-1.5 text-[10px] text-slate-600 dark:text-slate-400"
+                >
+                  <span className="text-red-400 mt-px">✕</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 特殊限制 */}
+          {capabilityNote.limits.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+                <AlertCircle className="h-3 w-3" />
+                <span>注意事项</span>
+              </div>
+              <ul className="space-y-1 pl-4">
+                {capabilityNote.limits.map((item, idx) => (
+                  <li
+                    key={`l-${idx}`}
+                    className="flex items-start gap-1.5 text-[10px] text-slate-600 dark:text-slate-400"
+                  >
+                    <span className="text-amber-500 mt-px">!</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

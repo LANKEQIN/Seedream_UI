@@ -371,6 +371,66 @@ export function modelSupportsStreaming(modelId: ModelId): boolean {
   return model?.supports.streaming ?? false
 }
 
+// 模型能力说明数据结构
+export interface ModelCapabilityNote {
+  modelId: ModelId
+  // 说明标注日期（文档数据更新时间）
+  updatedAt: string
+  // 支持的能力列表
+  supports: string[]
+  // 暂不支持的能力列表
+  unsupported: string[]
+  // 特殊限制说明
+  limits: string[]
+}
+
+// 模型能力说明
+// 数据来源：官方文档（https://www.volcengine.com/docs/82379/1824121）
+// 标注日期：2026-08-08
+export const MODEL_CAPABILITY_NOTES: ModelCapabilityNote[] = [
+  {
+    modelId: "doubao-seedream-5-0-pro-260628",
+    updatedAt: "2026-08-08",
+    supports: [
+      "文生图",
+      "单/多图生图（最多 10 张参考图）",
+      "交互编辑（框选 / 点位 / 箭头 / 坐标）",
+      "原生多语种文字生成（14 种语言）",
+      "分辨率：1K / 1.5K / 2K",
+      "输出格式：png / jpeg",
+    ],
+    unsupported: ["文生组图", "单/多图生组图", "流式输出", "联网搜索", "4K 分辨率"],
+    limits: ["最多支持传入 10 张参考图", "生成的图片 URL 仅保留 24 小时，请及时保存"],
+  },
+  {
+    modelId: "doubao-seedream-5-0-lite-260128",
+    updatedAt: "2026-08-08",
+    supports: [
+      "文生图",
+      "文生组图",
+      "单/多图生图",
+      "单/多图生组图",
+      "流式输出",
+      "联网搜索",
+      "分辨率：2K / 4K",
+      "输出格式：png / jpeg",
+    ],
+    unsupported: ["交互编辑"],
+    limits: ["参考图数量 + 生成数量 ≤ 15"],
+  },
+]
+
+/**
+ * 获取模型的完整能力说明
+ * @param modelId 模型ID
+ * @returns 能力说明（含标注日期），未找到时返回 undefined
+ */
+export function getModelCapabilityNote(
+  modelId: ModelId
+): ModelCapabilityNote | undefined {
+  return MODEL_CAPABILITY_NOTES.find((n) => n.modelId === modelId)
+}
+
 /**
  * 获取默认的尺寸配置
  * @returns 默认 ImageSizeConfig

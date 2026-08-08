@@ -31,4 +31,9 @@ npm run dev/build/lint/typecheck | 完成后必须lint+typecheck
 
 ## 模型
 5.0-lite: doubao-seedream-5-0-lite-260128 | 5.0-pro: doubao-seedream-5-0-pro-260628 |(忽略4.0/4.5模型)
+
+### 模型能力说明（更新日期 2026-08-08）
+- **5.0-pro**：支持 文生图、单/多图生图（参考图≤10）、交互编辑；**不支持** 文生组图、单/多图生组图、流式输出、联网搜索、4K；分辨率 1K/1.5K/2K；格式 png/jpeg；图片URL仅保留24小时
+- **5.0-lite**：支持 文生图、文生组图、单/多图生图、单/多图生组图、流式输出、联网搜索；**不支持** 交互编辑；分辨率 2K/4K；格式 png/jpeg；参考图数量+生成数量≤15
+
 记得使用两个技能，记得参考官方文档https://www.volcengine.com/docs/82379/1824121?lang=zh，https://www.volcengine.com/docs/82379/1541523?lang=zh
