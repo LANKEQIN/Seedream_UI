@@ -17,6 +17,8 @@ import {
   generateImageStream,
   getDefaultParams,
   getSupportedFormats,
+  getModelSupportedSizes,
+  modelSupportsStreaming,
   generateSizeString,
 } from "@/services/api"
 import type {
@@ -25,6 +27,7 @@ import type {
   ImageFormat,
   ImageSizeConfig,
   ModelId,
+  Resolution,
   SequentialImageGeneration,
   FeatureType,
 } from "@/types"
@@ -65,7 +68,25 @@ export function HomePage() {
       const newFormat: ImageFormat = isCurrentFormatSupported
         ? prev.outputFormat
         : (supportedFormats[0]?.value as ImageFormat ?? "jpeg")
-      return { ...prev, model, outputFormat: newFormat }
+      // 检查当前分辨率是否被新模型支持，否则重置为 2K
+      const supportedSizes = getModelSupportedSizes(model)
+      const newResolution: Resolution = supportedSizes.includes(
+        prev.sizeConfig.resolution
+      )
+        ? prev.sizeConfig.resolution
+        : "2K"
+      // 5.0-pro 不支持组图生成，切换到 pro 时重置为单图模式
+      const isGroupSupported = model === "doubao-seedream-5-0-lite-260128"
+      const newSequential: SequentialImageGeneration = isGroupSupported
+        ? prev.sequentialImageGeneration
+        : "disabled"
+      return {
+        ...prev,
+        model,
+        outputFormat: newFormat,
+        sizeConfig: { ...prev.sizeConfig, resolution: newResolution },
+        sequentialImageGeneration: newSequential,
+      }
     })
   }, [])
 
@@ -145,8 +166,12 @@ export function HomePage() {
 
     setCurrentTask(task)
 
-    // 判断是否使用流式模式：多图生成时启用流式输出
-    const useStreaming = fullParams.generationCount > 1 && fullParams.sequentialImageGeneration === "auto"
+    // 判断是否使用流式模式：多图组图生成且模型支持流式输出
+    // 5.0-pro 暂不支持流式输出，需走非流式接口
+    const useStreaming =
+      fullParams.generationCount > 1 &&
+      fullParams.sequentialImageGeneration === "auto" &&
+      modelSupportsStreaming(fullParams.model)
 
     if (useStreaming) {
       // 流式模式：多图生成时逐张显示

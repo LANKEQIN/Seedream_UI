@@ -1,7 +1,7 @@
 /**
  * 功能选择器 - 创作类型下拉菜单
  * 支持：图片生成
- * 集成模型选择：4.5 和 5.0-lite
+ * 集成模型选择：5.0-lite 和 5.0-pro
  * 使用 Portal 渲染下拉菜单，避免被父容器 overflow 裁剪
  */
 
@@ -53,9 +53,9 @@ const MODEL_OPTIONS: ModelOption[] = [
     iconColor: "text-yellow-500",
   },
   {
-    id: "doubao-seedream-4-5-251128",
-    label: "4.5",
-    desc: "质量高，细节更丰富",
+    id: "doubao-seedream-5-0-pro-260628",
+    label: "5.0-pro",
+    desc: "高精度，支持交互编辑",
     icon: Star,
     iconColor: "text-blue-500",
   },

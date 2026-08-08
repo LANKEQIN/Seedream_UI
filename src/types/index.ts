@@ -9,7 +9,7 @@ export type FeatureType = "image"
 // 支持的模型
 export type ModelId =
   | "doubao-seedream-5-0-lite-260128"
-  | "doubao-seedream-4-5-251128"
+  | "doubao-seedream-5-0-pro-260628"
 
 // 模型信息
 export interface ModelInfo {
@@ -25,7 +25,7 @@ export interface ModelInfo {
   }
   // 根据官方文档，不同模型支持不同的输出格式
   // 5.0-lite: png, jpeg
-  // 4.5/4.0: jpeg only
+  // 5.0-pro: png, jpeg
   supportedFormats: ImageFormat[]
   // 各模型支持的分辨率
   supportedSizes: Resolution[]
@@ -36,8 +36,8 @@ export interface ModelInfo {
 // 分辨率类型
 // 根据官方文档：
 // - 5.0-lite: 2K, 4K
-// - 4.5: 2K, 4K
-export type Resolution = "2K" | "4K"
+// - 5.0-pro: 1K, 1.5K, 2K
+export type Resolution = "1K" | "1.5K" | "2K" | "4K"
 
 // 图片比例类型
 export type AspectRatio =

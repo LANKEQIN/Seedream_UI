@@ -40,7 +40,7 @@ function formatSize(sizeConfig: ImageSizeConfig): string {
 function formatModelName(model: string): string {
   const modelMap: Record<string, string> = {
     "doubao-seedream-5-0-lite-260128": "Seedream 5.0-lite",
-    "doubao-seedream-4-5-251128": "Seedream 4.5",
+    "doubao-seedream-5-0-pro-260628": "Seedream 5.0-pro",
   }
   return modelMap[model] || model
 }

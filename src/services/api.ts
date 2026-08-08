@@ -202,6 +202,26 @@ export const RESOLUTION_DIMENSIONS: Record<
   Resolution,
   Record<Exclude<AspectRatio, "auto">, { width: number; height: number }>
 > = {
+  "1K": {
+    "1:1": { width: 1024, height: 1024 },
+    "3:4": { width: 864, height: 1152 },
+    "4:3": { width: 1152, height: 864 },
+    "16:9": { width: 1424, height: 800 },
+    "9:16": { width: 800, height: 1424 },
+    "3:2": { width: 1248, height: 832 },
+    "2:3": { width: 832, height: 1248 },
+    "21:9": { width: 1568, height: 672 },
+  },
+  "1.5K": {
+    "1:1": { width: 1536, height: 1536 },
+    "3:4": { width: 1344, height: 1792 },
+    "4:3": { width: 1792, height: 1344 },
+    "16:9": { width: 2048, height: 1152 },
+    "9:16": { width: 1152, height: 2048 },
+    "3:2": { width: 1872, height: 1248 },
+    "2:3": { width: 1248, height: 1872 },
+    "21:9": { width: 2352, height: 1008 },
+  },
   "2K": {
     "1:1": { width: 2048, height: 2048 },
     "4:3": { width: 2304, height: 1728 },
@@ -264,21 +284,24 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     maxGenerationCount: 15,
   },
   {
-    id: "doubao-seedream-4-5-251128",
-    name: "Seedream 4.5",
-    description: "平衡质量与速度，支持多种创作模式",
+    id: "doubao-seedream-5-0-pro-260628",
+    name: "Seedream 5.0 Pro",
+    description: "高精度图片生成，支持交互编辑、坐标定位，适合专业创作场景",
     supports: {
       textToImage: true,
       imageToImage: true,
       multiImage: true,
-      streaming: true,
+      // 根据官方文档，5.0-pro 暂不支持流式输出
+      streaming: false,
+      // 根据官方文档，5.0-pro 暂不支持联网搜索
       webSearch: false,
     },
-    // 4.5 仅支持 jpeg
-    supportedFormats: ["jpeg"],
-    // 4.5 支持 2K 和 4K
-    supportedSizes: ["2K", "4K"],
-    maxGenerationCount: 15,
+    // 5.0-pro 支持 png 和 jpeg
+    supportedFormats: ["png", "jpeg"],
+    // 根据官方文档，5.0-pro 支持 1K、1.5K、2K
+    supportedSizes: ["1K", "1.5K", "2K"],
+    // 根据官方文档，5.0-pro 最多支持传入 10 张参考图
+    maxGenerationCount: 10,
   },
 ]
 
@@ -339,6 +362,16 @@ export function getModelSupportedSizes(modelId: ModelId): Resolution[] {
 }
 
 /**
+ * 判断模型是否支持流式输出
+ * @param modelId 模型ID
+ * @returns 是否支持流式输出（5.0-pro 暂不支持）
+ */
+export function modelSupportsStreaming(modelId: ModelId): boolean {
+  const model = AVAILABLE_MODELS.find((m) => m.id === modelId)
+  return model?.supports.streaming ?? false
+}
+
+/**
  * 获取默认的尺寸配置
  * @returns 默认 ImageSizeConfig
  */
@@ -352,7 +385,7 @@ export function getDefaultSizeConfig(): ImageSizeConfig {
 // 图片格式选项定义
 // 注意：不同模型支持的格式不同，根据官方文档：
 // - 5.0 Lite: png, jpeg
-// - 4.5/4.0: jpeg only
+// - 5.0 Pro: png, jpeg
 export const IMAGE_FORMAT_OPTIONS = [
   { value: "png", label: "PNG", description: "无损压缩，支持透明" },
   { value: "jpeg", label: "JPEG", description: "有损压缩，文件较小" },
@@ -664,7 +697,10 @@ export async function generateImageStream(
 function buildRequestBody(params: GenerationParams): Record<string, unknown> {
   // 根据模型自动适配输出格式
   const validFormat = getValidOutputFormat(params.model, params.outputFormat)
-  const supportsOutputFormat = params.model === "doubao-seedream-5-0-lite-260128"
+  // 5.0-lite 与 5.0-pro 均支持 output_format 参数（png/jpeg）
+  const supportsOutputFormat =
+    params.model === "doubao-seedream-5-0-lite-260128" ||
+    params.model === "doubao-seedream-5-0-pro-260628"
 
   // 判断是否为组图模式
   const isGroupMode = params.sequentialImageGeneration === "auto"

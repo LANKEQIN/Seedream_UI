@@ -21,9 +21,8 @@
 
 | 模型名称 | Model ID | 支持功能 |
 |---------|----------|---------|
+| Seedream 5.0-pro | `doubao-seedream-5-0-pro-260628` | 文生图、单/多图生图、交互编辑 |
 | Seedream 5.0-lite | `doubao-seedream-5-0-lite-260128` | 文生图、文生组图、单/多图生图、单/多图生组图、联网搜索 |
-| Seedream 4.5 | `doubao-seedream-4-5-251128` | 文生图、文生组图、单/多图生图、单/多图生组图 |
-| Seedream 4.0 | `doubao-seedream-4-0-250828` | 文生图、文生组图、单/多图生图、单/多图生组图 |
 
 ### 2.2 核心功能模块
 

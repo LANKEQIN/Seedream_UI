@@ -92,6 +92,8 @@ export function GenerationParamsPopover({
   // 获取当前模型支持的分辨率
   const supportedSizes = getModelSupportedSizes(modelId)
   const supportedFormats = getSupportedFormats(modelId)
+  // 5.0-pro 暂不支持组图生成（文生组图/单多图生组图），仅 5.0-lite 支持
+  const isGroupModeSupported = modelId === "doubao-seedream-5-0-lite-260128"
 
   // 验证自定义尺寸（使用 useMemo 避免级联渲染）
   const validation = useMemo<SizeValidationResult>(() => {
@@ -483,8 +485,11 @@ export function GenerationParamsPopover({
           </button>
           <button
             onClick={() => onSequentialImageGenerationChange("auto")}
+            disabled={!isGroupModeSupported}
             className={cn(
               "flex flex-col items-start gap-1 px-3 py-2 text-xs rounded-lg border transition-all",
+              !isGroupModeSupported &&
+                "opacity-50 cursor-not-allowed border-slate-200 dark:border-slate-700",
               sequentialImageGeneration === "auto"
                 ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"
                 : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
@@ -497,7 +502,9 @@ export function GenerationParamsPopover({
                 <Check className="h-3 w-3 ml-auto" />
               )}
             </div>
-            <span className="text-[10px] text-slate-400">生成多张关联图片</span>
+            <span className="text-[10px] text-slate-400">
+              {isGroupModeSupported ? "生成多张关联图片" : "当前模型暂不支持组图"}
+            </span>
           </button>
         </div>
         <p className="text-[10px] text-slate-400">
